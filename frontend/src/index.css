@@ -187,6 +187,10 @@ a {
   justify-content: center;
 }
 
+.flex-col {
+  flex-direction: column;
+}
+
 /* ── Markdown styling within ChatMessage ── */
 .markdown-content {
   font: var(--text-body-lg);

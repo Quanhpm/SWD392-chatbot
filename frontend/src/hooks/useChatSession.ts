@@ -29,16 +29,18 @@ export const useChatSession = () => {
     }
   };
 
-  const loadSessionDetails = async (id: string) => {
+  const loadSessionDetails = async (id: string): Promise<boolean> => {
     setError(null);
     chatDispatch({ type: 'SET_LOADING', payload: true });
     try {
       const session = await chatApi.getSessionById(id);
       appDispatch({ type: 'SET_ACTIVE_SESSION', payload: id });
       chatDispatch({ type: 'SET_MESSAGES', payload: session.messages });
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load chat details');
       appDispatch({ type: 'SET_ACTIVE_SESSION', payload: null });
+      return false;
     } finally {
       chatDispatch({ type: 'SET_LOADING', payload: false });
     }

@@ -25,14 +25,18 @@ export const ChatPage: React.FC = () => {
   useEffect(() => {
     if (sessionId) {
       if (sessionId !== activeSessionId) {
-        void loadSessionDetails(sessionId);
+        void loadSessionDetails(sessionId).then((success) => {
+          if (!success) {
+            navigate('/chat', { replace: true });
+          }
+        });
       }
     } else {
       // Clear active session if we are at /chat or root
       appDispatch({ type: 'SET_ACTIVE_SESSION', payload: null });
       chatDispatch({ type: 'CLEAR_CHAT' });
     }
-  }, [sessionId, activeSessionId, appDispatch, chatDispatch]);
+  }, [sessionId, activeSessionId, appDispatch, chatDispatch, navigate]);
 
   // If a message was sent and an activeSessionId was generated, sync URL
   useEffect(() => {

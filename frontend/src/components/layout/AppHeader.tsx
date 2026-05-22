@@ -19,7 +19,12 @@ export const AppHeader: React.FC = () => {
         >
           <Icon name={state.sidebarOpen ? 'menu_open' : 'menu'} />
         </button>
-        <h1 className="header-title">SE1939 - Software Modeling and Design</h1>
+        <div className="header-logo-container flex-center">
+          <div className="header-logo flex-center">
+            <Icon name="auto_awesome" style={{ fontSize: '18px', color: 'var(--color-primary)' }} />
+          </div>
+          <h1 className="header-title">SE1939 - Software Modeling and Design</h1>
+        </div>
       </div>
       <div className="header-right flex-center">
         <button className="header-btn flex-center" aria-label="Help & Documentation">
@@ -47,6 +52,17 @@ export const AppHeader: React.FC = () => {
         }
         .header-left {
           gap: var(--spacing-md);
+        }
+        .header-logo-container {
+          gap: var(--spacing-sm);
+        }
+        .header-logo {
+          width: 32px;
+          height: 32px;
+          background-color: var(--color-primary-fixed);
+          border: 1px solid var(--color-outline-variant);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--shadow-sm);
         }
         .menu-btn {
           width: 40px;
