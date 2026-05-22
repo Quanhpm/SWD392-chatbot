@@ -1,7 +1,7 @@
 import { env } from '../config/environment.js';
 import { ChatSessionModel, type IChatMessage, type IChatSession } from '../models/ChatSession.js';
 import type { ChatResponse, RetrievalResult } from '../types/index.js';
-import { REFUSAL_MESSAGE, SYSTEM_PROMPT } from '../utils/constants.js';
+import { GENERAL_SYSTEM_PROMPT, REFUSAL_MESSAGE, SYSTEM_PROMPT } from '../utils/constants.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { buildCitations } from './citationService.js';
 import { generateEmbedding } from './embeddingService.js';
@@ -44,6 +44,39 @@ const toGeminiContent = (message: IChatMessage): GeminiContent => ({
 const titleFromMessage = (message: string): string => {
   const compact = message.replace(/\s+/g, ' ').trim();
   return compact.length > 50 ? `${compact.slice(0, 50)}...` : compact;
+};
+
+const extractGeminiText = (data: GeminiGenerateResponse): string =>
+  data.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text)
+    .filter((text): text is string => Boolean(text))
+    .join('')
+    .trim() || '';
+
+const callGemini = async (systemPrompt: string, contents: GeminiContent[]): Promise<string> => {
+  const response = await fetch(buildChatUrl(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      systemInstruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents,
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 1_500,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const details = await response.text();
+    throw new Error(`Gemini chat error (${response.status}): ${details}`);
+  }
+
+  return extractGeminiText((await response.json()) as GeminiGenerateResponse);
 };
 
 /** Creates a chat session. */
@@ -94,8 +127,29 @@ export const generateChatResponse = async (sessionId: string, userMessage: strin
 
   const queryEmbedding = await generateEmbedding(userMessage);
   const relevantChunks = await retrieveRelevantChunks(queryEmbedding);
+  const contentsWithoutContext: GeminiContent[] = [...priorMessages.map(toGeminiContent), { role: 'user', parts: [{ text: userMessage }] }];
 
   if (relevantChunks.length === 0) {
+    if (env.allowGeneralQuestions) {
+      try {
+        const content = (await callGemini(GENERAL_SYSTEM_PROMPT, contentsWithoutContext)) || 'I could not generate a response.';
+        const response: ChatResponse = { content, citations: [] };
+        session.messages.push({ role: 'assistant', content: response.content, citations: [], createdAt: new Date() });
+        await session.save();
+        return response;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown Gemini chat error';
+        session.messages.push({
+          role: 'assistant',
+          content: `Unable to generate a response: ${message}`,
+          citations: [],
+          createdAt: new Date(),
+        });
+        await session.save();
+        throw new Error(`Gemini chat completion failed: ${message}`);
+      }
+    }
+
     const response: ChatResponse = { content: REFUSAL_MESSAGE, citations: [] };
     session.messages.push({ role: 'assistant', content: response.content, citations: [], createdAt: new Date() });
     await session.save();
@@ -112,35 +166,11 @@ ${context}
 Question: ${userMessage}`;
 
   try {
-    const response = await fetch(buildChatUrl(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: SYSTEM_PROMPT }],
-        },
-        contents: [...priorMessages.map(toGeminiContent), { role: 'user', parts: [{ text: currentPrompt }] }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 1_500,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const details = await response.text();
-      throw new Error(`Gemini chat error (${response.status}): ${details}`);
-    }
-
-    const data = (await response.json()) as GeminiGenerateResponse;
     const content =
-      data.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text)
-        .filter((text): text is string => Boolean(text))
-        .join('')
-        .trim() || REFUSAL_MESSAGE;
+      (await callGemini(
+        env.allowGeneralQuestions ? GENERAL_SYSTEM_PROMPT : SYSTEM_PROMPT,
+        [...priorMessages.map(toGeminiContent), { role: 'user', parts: [{ text: currentPrompt }] }],
+      )) || REFUSAL_MESSAGE;
     const citations = buildCitations(relevantChunks);
     session.messages.push({ role: 'assistant', content, citations, createdAt: new Date() });
     await session.save();

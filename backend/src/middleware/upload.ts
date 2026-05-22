@@ -6,6 +6,7 @@ import multer from 'multer';
 
 import { env } from '../config/environment.js';
 import { SUPPORTED_FILE_TYPES, SUPPORTED_MIME_TYPES } from '../utils/constants.js';
+import { decodePossiblyMojibakeFilename } from '../utils/filenameEncoding.js';
 import { AppError } from './errorHandler.js';
 
 const uploadDirectory = path.resolve(env.uploadDir);
@@ -18,8 +19,9 @@ const storage = multer.diskStorage({
     callback(null, uploadDirectory);
   },
   filename: (_req, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase();
-    callback(null, `${Date.now()}-${randomUUID()}-${sanitizeFilename(path.basename(file.originalname, extension))}${extension}`);
+    const originalName = decodePossiblyMojibakeFilename(file.originalname);
+    const extension = path.extname(originalName).toLowerCase();
+    callback(null, `${Date.now()}-${randomUUID()}-${sanitizeFilename(path.basename(originalName, extension))}${extension}`);
   },
 });
 
@@ -29,7 +31,8 @@ export const upload = multer({
     fileSize: env.maxFileSize,
   },
   fileFilter: (_req, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase().replace('.', '');
+    const originalName = decodePossiblyMojibakeFilename(file.originalname);
+    const extension = path.extname(originalName).toLowerCase().replace('.', '');
     const validExtension = SUPPORTED_FILE_TYPES.includes(extension as (typeof SUPPORTED_FILE_TYPES)[number]);
     const validMime = SUPPORTED_MIME_TYPES.includes(file.mimetype as (typeof SUPPORTED_MIME_TYPES)[number]);
 

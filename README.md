@@ -92,6 +92,7 @@ se1939-rag-chatbot/
 | `CHUNK_SIZE` | `800` | Target chunk size (tokens) |
 | `CHUNK_OVERLAP` | `200` | Overlap between chunks |
 | `SIMILARITY_THRESHOLD` | `0.6` | Cosine similarity cutoff (0 - 1) |
+| `ALLOW_GENERAL_QUESTIONS` | `true` | Answer outside uploaded materials when retrieval has no matching context |
 
 ## 8. Troubleshooting
 - **Gemini Errors**: Verify your API key is enabled for Gemini API and is correctly set in `backend/.env`.

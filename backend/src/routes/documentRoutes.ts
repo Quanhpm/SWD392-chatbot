@@ -10,6 +10,7 @@ import {
   processDocument,
 } from '../services/documentService.js';
 import { logger } from '../utils/logger.js';
+import { decodePossiblyMojibakeFilename } from '../utils/filenameEncoding.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { upload } from '../middleware/upload.js';
 import { mongoIdParamValidator, uploadDocumentValidators, validateRequest } from '../middleware/validation.js';
@@ -27,14 +28,15 @@ documentRoutes.post(
         throw new AppError('File is required.', 400);
       }
 
-      const fileType = path.extname(req.file.originalname).toLowerCase().replace('.', '');
+      const originalName = decodePossiblyMojibakeFilename(req.file.originalname);
+      const fileType = path.extname(originalName).toLowerCase().replace('.', '');
       if (!['pdf', 'docx', 'pptx'].includes(fileType)) {
         throw new AppError('Unsupported file type.', 400);
       }
 
       const document = await createDocument({
         fileName: req.file.filename,
-        originalName: req.file.originalname,
+        originalName,
         fileType: fileType as 'pdf' | 'docx' | 'pptx',
         fileSize: req.file.size,
         mimeType: req.file.mimetype,
