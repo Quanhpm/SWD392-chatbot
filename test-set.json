@@ -1,0 +1,507 @@
+{
+  "courseTitle": "Software Modeling and Design: UML, Use Cases, Patterns, and Software Architectures",
+  "description": "Evaluation test set with 50 questions and ground-truth answers for RAG chatbot accuracy assessment.",
+  "totalQuestions": 50,
+  "questions": [
+    {
+      "id": 1,
+      "question": "What are the four phases of the Unified Process?",
+      "groundTruthAnswer": "The four phases of the Unified Process are: (1) Inception – defining the scope and vision, (2) Elaboration – analyzing the problem domain and establishing architectural foundation, (3) Construction – building the system, and (4) Transition – deploying the system to users.",
+      "sourceDocument": "Chapter 2 - Iterative, Evolutionary, and Agile",
+      "chapter": 2,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["inception", "elaboration", "construction", "transition"]
+    },
+    {
+      "id": 2,
+      "question": "Explain the difference between iterative and waterfall development.",
+      "groundTruthAnswer": "Waterfall development is a linear, sequential model where each phase (requirements, design, implementation, verification, maintenance) must be completed before the next starts, leading to late risk resolution. Iterative development, on the other hand, breaks the project into small, timeboxed iterations, with each iteration involving a mini-waterfall cycle resulting in an executable system release, allowing early feedback and risk reduction.",
+      "sourceDocument": "Chapter 2 - Iterative, Evolutionary, and Agile",
+      "chapter": 2,
+      "difficulty": "medium",
+      "category": "comparison",
+      "expectedKeywords": ["sequential", "feedback", "timeboxed", "iterations", "waterfall", "risk"]
+    },
+    {
+      "id": 3,
+      "question": "What does a Use Case describe?",
+      "groundTruthAnswer": "A use case describes a set of activities or a sequence of actions that a system performs to yield an observable result of value to a specific actor. It is typically written as text scenarios showing the interactions between actors and the system.",
+      "sourceDocument": "Chapter 3 - Use Cases",
+      "chapter": 3,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["actor", "sequence of actions", "value", "text scenarios"]
+    },
+    {
+      "id": 4,
+      "question": "What are the three main types of use cases based on format details?",
+      "groundTruthAnswer": "The three main formats are: (1) Brief: one-paragraph summary, usually of the main success scenario, (2) Casual: informal multiple-paragraph format covering various scenarios, and (3) Fully Dressed: detailed template with preconditions, postconditions, main success scenarios, extensions, and technology variations.",
+      "sourceDocument": "Chapter 3 - Use Cases",
+      "chapter": 3,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["brief", "casual", "fully dressed"]
+    },
+    {
+      "id": 5,
+      "question": "What is the difference between an include and an extend relationship in a use case diagram?",
+      "groundTruthAnswer": "An 'include' relationship is used when a base use case unconditionally includes the behavior of a sub-use case to avoid duplication. An 'extend' relationship represents conditional behavior that is only added to the base use case under specific extension points or conditions.",
+      "sourceDocument": "Chapter 3 - Use Cases",
+      "chapter": 3,
+      "difficulty": "medium",
+      "category": "comparison",
+      "expectedKeywords": ["include", "extend", "unconditionally", "conditional", "extension points"]
+    },
+    {
+      "id": 6,
+      "question": "What is a Domain Model in OOAD?",
+      "groundTruthAnswer": "A Domain Model is a visual representation of real-world conceptual classes, their attributes, and associations in a problem domain. It represents 'real-world' things rather than software components (no methods are shown).",
+      "sourceDocument": "Chapter 4 - Domain Models",
+      "chapter": 4,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["conceptual classes", "real-world", "associations", "attributes"]
+    },
+    {
+      "id": 7,
+      "question": "Compare a domain model with a database schema/data model.",
+      "groundTruthAnswer": "A domain model represents conceptual real-world entities, their relationships, and constraints without considering technical storage rules. A database schema/data model is a design artifact representing the physical data storage structures (tables, foreign keys, indexes, data types) optimized for database performance and integrity.",
+      "sourceDocument": "Chapter 4 - Domain Models",
+      "chapter": 4,
+      "difficulty": "medium",
+      "category": "comparison",
+      "expectedKeywords": ["conceptual", "physical", "tables", "foreign keys", "real-world"]
+    },
+    {
+      "id": 8,
+      "question": "How do you identify conceptual classes in a problem domain?",
+      "groundTruthAnswer": "Conceptual classes can be identified by: (1) Noun Phrase Identification: finding nouns or noun phrases in use cases or requirements, (2) Category List: using a pre-existing list of common categories like physical objects, transactions, roles, containers, or organizations.",
+      "sourceDocument": "Chapter 4 - Domain Models",
+      "chapter": 4,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["noun phrase", "category list", "conceptual classes"]
+    },
+    {
+      "id": 9,
+      "question": "What are the three essential components of a class diagram in UML?",
+      "groundTruthAnswer": "A class diagram standard box representation includes: (1) The Class Name in the top compartment, (2) Attributes (data fields) in the middle compartment, and (3) Operations (methods) in the bottom compartment.",
+      "sourceDocument": "Chapter 5 - Class Diagrams",
+      "chapter": 5,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["class name", "attributes", "operations"]
+    },
+    {
+      "id": 10,
+      "question": "What is a System Sequence Diagram (SSD) and why is it used?",
+      "groundTruthAnswer": "A System Sequence Diagram (SSD) is a fast diagram that shows, for a particular scenario of a use case, the events that external actors generate, their order, and the system responses. It treats the system as a black box to define system boundaries and operations.",
+      "sourceDocument": "Chapter 6 - System Sequence Diagrams",
+      "chapter": 6,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["black box", "events", "system operations", "external actors"]
+    },
+    {
+      "id": 11,
+      "question": "What are the nine GRASP patterns?",
+      "groundTruthAnswer": "The nine GRASP patterns are: Information Expert, Creator, Controller, Low Coupling, High Cohesion, Polymorphism, Pure Fabrication, Indirection, and Protected Variations.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["expert", "creator", "controller", "coupling", "cohesion", "polymorphism", "fabrication", "indirection", "variations"]
+    },
+    {
+      "id": 12,
+      "question": "Explain the GRASP Information Expert pattern.",
+      "groundTruthAnswer": "Information Expert is a key design pattern which assigns a responsibility to the class that has the information necessary to fulfill it. This leads to high cohesion and lower coupling because data and logic reside together.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["responsibility", "information", "cohesion", "coupling"]
+    },
+    {
+      "id": 13,
+      "question": "Explain the GRASP Creator pattern.",
+      "groundTruthAnswer": "Creator helps determine which class should be responsible for instantiating a new object. Assign class B the responsibility to create class A if: B contains/aggregates A, B records A, B closely uses A, or B has the initializing data for A.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["create", "instantiating", "aggregates", "records", "uses"]
+    },
+    {
+      "id": 14,
+      "question": "What is the Controller pattern in GRASP?",
+      "groundTruthAnswer": "The Controller pattern assigns the responsibility for receiving and handling system input events to a class that represents the overall system, a root business entity, or a use case handler. This decouples UI classes from application logic.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["system events", "decouples UI", "handler", "input"]
+    },
+    {
+      "id": 15,
+      "question": "Contrast Low Coupling with High Cohesion.",
+      "groundTruthAnswer": "Low Coupling is an evaluative pattern that aims to keep classes independent and decrease dependencies, making systems easier to maintain and reuse. High Cohesion is an evaluative pattern that ensures a class has focused responsibilities and doesn't perform unrelated tasks, making code easier to understand and debug.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "comparison",
+      "expectedKeywords": ["coupling", "cohesion", "dependencies", "focused responsibilities"]
+    },
+    {
+      "id": 16,
+      "question": "What is a Pure Fabrication in GRASP?",
+      "groundTruthAnswer": "A Pure Fabrication is an artificial class that does not represent any real-world conceptual domain entity. It is created solely to achieve low coupling, high cohesion, or high reuse (e.g., a DatabaseAccessor or Logger class).",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["artificial class", "not real-world", "cohesion", "coupling", "database"]
+    },
+    {
+      "id": 17,
+      "question": "Explain how the GRASP Polymorphism pattern is applied.",
+      "groundTruthAnswer": "Polymorphism is applied by assigning responsibilities to polymorphic operations when behavior varies by class type. This avoids conditional if/else or switch-case structures, making the system extensible to new types without modifying existing logic.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["polymorphic", "varies by type", "if/else", "extensible"]
+    },
+    {
+      "id": 18,
+      "question": "Explain the Protected Variations GRASP pattern.",
+      "groundTruthAnswer": "Protected Variations shields elements from instability or changes in other elements by identifying points of predicted instability or variation and creating a stable interface around them. It is the core principle behind encapsulation, interfaces, and polymorphism.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "hard",
+      "category": "conceptual",
+      "expectedKeywords": ["shields", "instability", "stable interface", "encapsulation"]
+    },
+    {
+      "id": 19,
+      "question": "What is the GoF Adapter Pattern and when should it be used?",
+      "groundTruthAnswer": "The Adapter pattern converts the interface of a class into another interface that clients expect, letting classes work together that couldn't otherwise due to incompatible interfaces. It should be used when wrapping legacy code or third-party libraries.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "medium",
+      "category": "factual",
+      "expectedKeywords": ["converts", "incompatible interfaces", "wraps", "client expects"]
+    },
+    {
+      "id": 20,
+      "question": "Compare the GoF Adapter Pattern with the GoF Facade Pattern.",
+      "groundTruthAnswer": "The Adapter pattern converts an existing interface to match a target expected interface so two incompatible structures can communicate. The Facade pattern provides a simplified, unified high-level interface to a complex subsystem, making it easier for clients to interact with the subsystem.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "medium",
+      "category": "comparison",
+      "expectedKeywords": ["converts", "simplified", "facade", "adapter", "complex subsystem"]
+    },
+    {
+      "id": 21,
+      "question": "How does the GoF Observer Pattern work?",
+      "groundTruthAnswer": "The Observer pattern defines a one-to-many dependency between objects. When one object (the subject) changes state, all of its dependents (observers) are notified and updated automatically. This decouples the core domain state from the UI display.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["one-to-many", "subject", "observers", "notified", "decouples"]
+    },
+    {
+      "id": 22,
+      "question": "What is the GoF Strategy Pattern and how does it promote open-closed principle?",
+      "groundTruthAnswer": "The Strategy pattern defines a family of algorithms, encapsulates each one, and makes them interchangeable, letting the algorithm vary independently from clients that use it. It promotes the Open-Closed Principle because new strategies can be added without modifying the context class.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "hard",
+      "category": "conceptual",
+      "expectedKeywords": ["family of algorithms", "encapsulates", "interchangeable", "open-closed", "strategies"]
+    },
+    {
+      "id": 23,
+      "question": "Explain the Factory Pattern (Simple Factory vs Factory Method).",
+      "groundTruthAnswer": "A Simple Factory is a class helper with a static method that instantiates objects based on given arguments. The Factory Method pattern defines an interface for creating an object, but lets subclasses decide which class to instantiate, delegating creation logic to subclasses.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "hard",
+      "category": "comparison",
+      "expectedKeywords": ["simple factory", "factory method", "subclasses decide", "instantiates"]
+    },
+    {
+      "id": 24,
+      "question": "What is the Singleton Pattern and what are its potential drawbacks?",
+      "groundTruthAnswer": "The Singleton pattern ensures that a class has only one instance and provides a global point of access to it. Drawbacks include: global state issues, tight coupling, difficulty in unit testing (due to persistent state), and issues in multi-threaded environments.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["one instance", "global point of access", "drawbacks", "testing"]
+    },
+    {
+      "id": 25,
+      "question": "Explain the Composite Pattern.",
+      "groundTruthAnswer": "The Composite pattern composes objects into tree structures to represent part-whole hierarchies. It lets clients treat individual objects and compositions of objects uniformly by making both implement a common interface.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "hard",
+      "category": "conceptual",
+      "expectedKeywords": ["tree structures", "part-whole", "uniformly", "common interface"]
+    },
+    {
+      "id": 26,
+      "question": "What is the difference between a Sequence Diagram and a Communication Diagram?",
+      "groundTruthAnswer": "Sequence diagrams focus on the temporal ordering or chronological sequence of messages passing between lifelines, making time sequence easy to read. Communication diagrams focus on the structural relationships and links between objects, using decimal numbering (e.g., 1.1, 1.2) to show message sequence.",
+      "sourceDocument": "Chapter 9 - Interaction Diagrams",
+      "chapter": 9,
+      "difficulty": "medium",
+      "category": "comparison",
+      "expectedKeywords": ["temporal", "time sequence", "structural relationships", "numbering", "lifelines"]
+    },
+    {
+      "id": 27,
+      "question": "What is the Layers Architectural Pattern?",
+      "groundTruthAnswer": "The Layers pattern organizes software into hierarchical layers where each layer has distinct, cohesive responsibilities. Higher layers depend on services from lower layers, but lower layers do not depend on higher layers, promoting decoupling and swap-ability.",
+      "sourceDocument": "Chapter 10 - Software Architecture",
+      "chapter": 10,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["hierarchical", "cohesive responsibilities", "depend on lower", "decoupling"]
+    },
+    {
+      "id": 28,
+      "question": "Describe the Model-View-Controller (MVC) architecture.",
+      "groundTruthAnswer": "MVC divides an application into three core components: (1) Model: maintains application state and business rules, notifying observers of changes, (2) View: renders data from the model to the UI, (3) Controller: receives user input events, updates the model, and selects views.",
+      "sourceDocument": "Chapter 10 - Software Architecture",
+      "chapter": 10,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["model", "view", "controller", "state", "user input"]
+    },
+    {
+      "id": 29,
+      "question": "Compare monolithic architecture with microservices architecture.",
+      "groundTruthAnswer": "Monolithic architecture builds all application features as a single, unified codebase and deployable unit, which simplifies early dev but becomes hard to scale. Microservices separates the app into independent, loosely coupled deployable services that communicate via lightweight APIs, enabling horizontal scaling and rapid deployments.",
+      "sourceDocument": "Chapter 10 - Software Architecture",
+      "chapter": 10,
+      "difficulty": "hard",
+      "category": "comparison",
+      "expectedKeywords": ["monolithic", "microservices", "single deployable", " loosely coupled", "independent services"]
+    },
+    {
+      "id": 30,
+      "question": "What is the difference between analysis and design in software development?",
+      "groundTruthAnswer": "Analysis focuses on understanding the problem domain and requirements ('doing the right thing'). Design focuses on formulating a conceptual solution in software that satisfies those requirements ('doing the thing right').",
+      "sourceDocument": "Chapter 1 - OOAD Basics",
+      "chapter": 1,
+      "difficulty": "easy",
+      "category": "comparison",
+      "expectedKeywords": ["analysis", "design", "problem domain", "solution", "requirements"]
+    },
+    {
+      "id": 31,
+      "question": "Explain Responsibility-Driven Design (RDD).",
+      "groundTruthAnswer": "Responsibility-Driven Design (RDD) is an approach to object design where software objects are viewed as having responsibilities (knowing and doing). Objects collaborate with one another to fulfill these responsibilities, and patterns like GRASP help assign them.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "easy",
+      "category": "conceptual",
+      "expectedKeywords": ["knowing", "doing", "responsibilities", "collaborate"]
+    },
+    {
+      "id": 32,
+      "question": "In a library system, which GRASP pattern dictates putting the 'borrowBook' method in the Library class rather than the Book class?",
+      "groundTruthAnswer": "The Information Expert pattern. The Library class aggregates all BorrowRecord objects and knows which books are out, making it the most logical 'expert' with all the necessary information to process a library borrow request.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "application",
+      "expectedKeywords": ["expert", "information", "library", "aggregates"]
+    },
+    {
+      "id": 33,
+      "question": "Scenario: An application needs to compute tax using different regional calculators. Which GoF pattern should be used?",
+      "groundTruthAnswer": "The Strategy Pattern should be used. Each regional tax calculator can be encapsulated as a separate class implementing a common 'TaxCalculator' strategy interface. The main class can swap calculators dynamically based on user region.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "easy",
+      "category": "application",
+      "expectedKeywords": ["strategy", "regional", "encapsulated", "calculator", "interface"]
+    },
+    {
+      "id": 34,
+      "question": "Scenario: You are designing a file system module containing files and directories. Directories can contain files and other directories. Which GoF pattern applies?",
+      "groundTruthAnswer": "The Composite Pattern. It allows both files (leaf nodes) and directories (composite nodes) to implement a common 'FileSystemItem' interface, allowing clients to treat files and directories uniformly.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "easy",
+      "category": "application",
+      "expectedKeywords": ["composite", "files", "directories", "FileSystemItem", "uniformly"]
+    },
+    {
+      "id": 35,
+      "question": "Scenario: A third-party logging library has an incompatible interface with your existing logging system. How do you integrate it?",
+      "groundTruthAnswer": "Apply the GoF Adapter Pattern. Create an Adapter class that implements your app's standard Logger interface and internally translates and forwards those calls to the third-party library's unique methods.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "easy",
+      "category": "application",
+      "expectedKeywords": ["adapter", "logger interface", "incompatible", "translates"]
+    },
+    {
+      "id": 36,
+      "question": "Scenario: A PaymentProcessor class needs to communicate with three separate banking APIs. You want to simplify the checkout system's access. Which GoF pattern should you use?",
+      "groundTruthAnswer": "Apply the GoF Facade Pattern. Create a unified 'BankPaymentFacade' class that exposes a simple 'chargePayment' method, hiding the complex authorization, verification, and API routing steps required by the separate banks.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "medium",
+      "category": "application",
+      "expectedKeywords": ["facade", "unified", " chargePayment", "hiding complex"]
+    },
+    {
+      "id": 37,
+      "question": "Scenario: In a multiplayer game, multiple GUI panels must update instantly when the Player's health score changes. Which pattern is appropriate?",
+      "groundTruthAnswer": "The GoF Observer Pattern. The Player class acts as the Subject, and each GUI panel acts as an Observer registering with the Player. When health changes, the Player notifies all registered observers to repaint themselves.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "medium",
+      "category": "application",
+      "expectedKeywords": ["observer", "player", "subject", "GUI panels", "notifies"]
+    },
+    {
+      "id": 38,
+      "question": "Scenario: You want to ensure an application has exactly one configuration manager, loaded at startup. Which pattern do you apply?",
+      "groundTruthAnswer": "The GoF Singleton Pattern. Define a private constructor for the ConfigManager class, a static instance variable, and a public static 'getInstance' method to ensure a single instance is accessed globally.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "easy",
+      "category": "application",
+      "expectedKeywords": ["singleton", "ConfigManager", "getInstance", "private constructor"]
+    },
+    {
+      "id": 39,
+      "question": "Scenario: A GUI framework needs to allow users to dynamically add borders, scrolls, and shadows to any simple UI widget. Which GoF pattern should be used?",
+      "groundTruthAnswer": "The GoF Decorator Pattern. It lets you dynamically attach additional responsibilities to an object. Decorator classes wrap the base widget and add borders or scrolls while keeping the same interface.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "hard",
+      "category": "application",
+      "expectedKeywords": ["decorator", "wrap", "dynamically attach", "widget"]
+    },
+    {
+      "id": 40,
+      "question": "Scenario: A document editor needs to support 'Undo' actions. Which design pattern supports capturing state changes?",
+      "groundTruthAnswer": "The GoF Memento or Command Pattern. The Command pattern encapsulates the editing actions, storing target data, while the Memento pattern captures and externalizes an object's internal state without violating encapsulation, allowing restoration later.",
+      "sourceDocument": "Chapter 8 - GoF Design Patterns",
+      "chapter": 8,
+      "difficulty": "hard",
+      "category": "application",
+      "expectedKeywords": ["command", "memento", "undo", "state", "restoration"]
+    },
+    {
+      "id": 41,
+      "question": "Explain why low coupling is desirable in large enterprise systems.",
+      "groundTruthAnswer": "Low coupling is desirable because it reduces the impact of changes. When classes or subsystems are highly independent, editing or updating one does not trigger a ripple effect of bugs or required changes across the rest of the application, making maintenance cheaper and components highly reusable.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["impact of changes", "independent", "ripple effect", "maintenance"]
+    },
+    {
+      "id": 42,
+      "question": "What is an architectural style and how does it differ from a design pattern?",
+      "groundTruthAnswer": "An architectural style defines the overall macro-structural organization and interaction constraints of a whole system (e.g., microservices, layers). A design pattern is a micro-structural solution to a local, specific programming problem involving a few interacting classes (e.g., Singleton, Observer).",
+      "sourceDocument": "Chapter 10 - Software Architecture",
+      "chapter": 10,
+      "difficulty": "hard",
+      "category": "comparison",
+      "expectedKeywords": ["macro-structural", "micro-structural", "architectural style", "design pattern"]
+    },
+    {
+      "id": 43,
+      "question": "What is a state machine diagram in UML and when is it used?",
+      "groundTruthAnswer": "A state machine diagram shows the life cycle of a single object, detailing the states it can exist in, the events that trigger transitions between states, and the actions that occur. It is used for objects with complex, event-driven behaviors (e.g., order processes).",
+      "sourceDocument": "Chapter 9 - Interaction Diagrams",
+      "chapter": 9,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["life cycle", "states", "transitions", "events"]
+    },
+    {
+      "id": 44,
+      "question": "What is an Activity Diagram and how does it differ from a Sequence Diagram?",
+      "groundTruthAnswer": "An Activity diagram models the procedural flow of control or data across actions, similar to a flowchart with parallel forks and joins. A Sequence diagram models the communication and message exchange order between specific object lifelines over time.",
+      "sourceDocument": "Chapter 9 - Interaction Diagrams",
+      "chapter": 9,
+      "difficulty": "medium",
+      "category": "comparison",
+      "expectedKeywords": ["procedural flow", "parallel forks", "message exchange", "lifelines"]
+    },
+    {
+      "id": 45,
+      "question": "What is a Package Diagram in UML?",
+      "groundTruthAnswer": "A package diagram represents the grouping of elements (classes, files, other packages) into logical namespaces and shows the dependencies between these packages, helping organize large-scale system architectures.",
+      "sourceDocument": "Chapter 5 - Class Diagrams",
+      "chapter": 5,
+      "difficulty": "easy",
+      "category": "factual",
+      "expectedKeywords": ["namespaces", "grouping", "dependencies", "organize"]
+    },
+    {
+      "id": 46,
+      "question": "What is the difference between a deployment diagram and a component diagram?",
+      "groundTruthAnswer": "A Component diagram describes the static organization of software modules, source files, and physical interfaces. A Deployment diagram shows the physical hardware nodes (servers, devices), their network connections, and which software components are deployed onto which nodes.",
+      "sourceDocument": "Chapter 10 - Software Architecture",
+      "chapter": 10,
+      "difficulty": "medium",
+      "category": "comparison",
+      "expectedKeywords": ["software modules", "physical hardware", "deployed", "nodes"]
+    },
+    {
+      "id": 47,
+      "question": "Scenario: You are designing an order system where orders start as 'Pending', move to 'Paid' upon payment, then 'Shipped', or 'Cancelled'. Which UML diagram should you use to model this?",
+      "groundTruthAnswer": "You should use a State Machine Diagram. It is specifically designed to model the discrete states of an object, transitions, guard conditions, and event triggers throughout its lifecycle.",
+      "sourceDocument": "Chapter 9 - Interaction Diagrams",
+      "chapter": 9,
+      "difficulty": "easy",
+      "category": "application",
+      "expectedKeywords": ["state machine", "states", "transitions", "lifecycle"]
+    },
+    {
+      "id": 48,
+      "question": "Explain the Open-Closed Principle (OCP) in object-oriented design.",
+      "groundTruthAnswer": "The Open-Closed Principle states that software entities (classes, modules, functions) should be open for extension but closed for modification. This means you should be able to add new behaviors or features without altering the existing, verified source code.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "medium",
+      "category": "conceptual",
+      "expectedKeywords": ["extension", "modification", "open-closed"]
+    },
+    {
+      "id": 49,
+      "question": "Explain the Liskov Substitution Principle (LSP).",
+      "groundTruthAnswer": "The Liskov Substitution Principle states that subclasses should be substitutable for their superclasses without altering the correctness or behavior of the program. Derived classes must honor the contracts of base classes.",
+      "sourceDocument": "Chapter 7 - GRASP Patterns",
+      "chapter": 7,
+      "difficulty": "hard",
+      "category": "conceptual",
+      "expectedKeywords": ["substitutable", "subclasses", "correctness", "contracts"]
+    },
+    {
+      "id": 50,
+      "question": "What is Dependency Inversion Principle (DIP)?",
+      "groundTruthAnswer": "The Dependency Inversion Principle states that high-level modules should not depend on low-level modules; both should depend on abstractions. Also, abstractions should not depend on details; details should depend on abstractions. This promotes decoupling in layered software.",
+      "sourceDocument": "Chapter 10 - Software Architecture",
+      "chapter": 10,
+      "difficulty": "hard",
+      "category": "conceptual",
+      "expectedKeywords": ["high-level", "low-level", "abstractions", "details"]
+    }
+  ]
+}
