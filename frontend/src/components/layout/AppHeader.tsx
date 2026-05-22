@@ -27,12 +27,6 @@ export const AppHeader: React.FC = () => {
         </div>
       </div>
       <div className="header-right flex-center">
-        <button className="header-btn flex-center" aria-label="Help & Documentation">
-          <Icon name="help" />
-        </button>
-        <button className="header-btn flex-center" aria-label="Settings">
-          <Icon name="settings" />
-        </button>
         <div className="user-avatar flex-center" title="John Doe">
           JD
         </div>

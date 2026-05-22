@@ -81,7 +81,20 @@ export const Sidebar: React.FC = () => {
 
       {/* 3. Session History List */}
       <div className="sidebar-section-container">
-        <h3 className="section-header">Recent History</h3>
+        <div className="section-header-row">
+          <h3 className="section-header">Recent History</h3>
+          <button
+            className="new-chat-btn flex-center"
+            onClick={() => {
+              dispatch({ type: 'SET_ACTIVE_SESSION', payload: null });
+              dispatch({ type: 'TOGGLE_SIDEBAR', payload: false });
+              navigate('/chat');
+            }}
+            title="Start a new chat"
+          >
+            <Icon name="add_comment" style={{ fontSize: '16px' }} />
+          </button>
+        </div>
         <SessionList />
       </div>
 
@@ -117,22 +130,8 @@ export const Sidebar: React.FC = () => {
               </div>
             ))
           )}
-        </div>
       </div>
-
-      <div className="divider" />
-
-      {/* 5. Footer Cluster */}
-      <footer className="sidebar-footer">
-        <a className="footer-link flex-center" href="#help">
-          <Icon name="help_outline" />
-          <span>Help & FAQ</span>
-        </a>
-        <a className="footer-link flex-center" href="#trash">
-          <Icon name="delete_outline" />
-          <span>Trash</span>
-        </a>
-      </footer>
+    </div>
 
       <style>{`
         .app-sidebar {
@@ -225,6 +224,25 @@ export const Sidebar: React.FC = () => {
           text-transform: uppercase;
           letter-spacing: var(--text-label-md-spacing);
           padding-left: 8px;
+        }
+        .section-header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+        .new-chat-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: var(--radius-lg);
+          color: var(--color-primary);
+          transition: background-color var(--transition-fast), transform var(--transition-fast);
+        }
+        .new-chat-btn:hover {
+          background-color: var(--color-primary-fixed);
+          transform: scale(1.1);
+        }
+        .new-chat-btn:active {
+          transform: scale(0.95);
         }
 
         /* Document Vault List */

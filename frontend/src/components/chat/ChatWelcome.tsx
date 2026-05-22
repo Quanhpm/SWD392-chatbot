@@ -7,10 +7,10 @@ interface ChatWelcomeProps {
 
 export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
   const suggestions = [
-    'What are the four phases of the Unified Process?',
-    'Explain the difference between include and extend in use cases.',
-    'Give a real-world scenario for the Strategy Design Pattern.',
-    'Contrast High Cohesion and Low Coupling in software modeling.',
+    'Bốn giai đoạn của Unified Process là gì?',
+    'Giải thích sự khác nhau giữa include và extend trong use case.',
+    'Cho ví dụ thực tế về Strategy Design Pattern.',
+    'So sánh High Cohesion và Low Coupling trong software modeling.',
   ];
 
   return (
@@ -18,9 +18,9 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
       <div className="welcome-icon-box flex-center">
         <Icon name="auto_awesome" style={{ fontSize: '30px', color: 'var(--color-primary)' }} />
       </div>
-      <h2 className="welcome-title">How can I help with your research?</h2>
+      <h2 className="welcome-title">Tôi có thể hỗ trợ nghiên cứu gì cho bạn?</h2>
       <p className="welcome-subtitle">
-        Ask questions about SE1939 documents, request summaries, or explore software modeling concepts.
+        Đặt câu hỏi về tài liệu môn SE1939, yêu cầu tóm tắt nội dung, hoặc khám phá các khái niệm Software Modeling.
       </p>
 
       <div className="suggestions-container flex-center">
