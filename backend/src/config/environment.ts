@@ -17,6 +17,11 @@ export interface Environment {
   allowGeneralQuestions: boolean;
   maxFileSize: number;
   uploadDir: string;
+  // Auth
+  jwtSecret: string;
+  jwtExpiresIn: string;
+  bcryptSaltRounds: number;
+  redisUrl?: string;
 }
 
 const readString = (name: string, fallback?: string): string => {
@@ -64,4 +69,9 @@ export const env: Environment = {
   allowGeneralQuestions: readBoolean('ALLOW_GENERAL_QUESTIONS', true),
   maxFileSize: readNumber('MAX_FILE_SIZE', 52_428_800),
   uploadDir: readString('UPLOAD_DIR', './uploads'),
+  // Auth
+  jwtSecret: readString('JWT_SECRET', 'changeme-super-secret-jwt-key-min-32-chars-long'),
+  jwtExpiresIn: readString('JWT_EXPIRES_IN', '7d'),
+  bcryptSaltRounds: readNumber('BCRYPT_SALT_ROUNDS', 10),
+  redisUrl: process.env.REDIS_URL || undefined,
 };

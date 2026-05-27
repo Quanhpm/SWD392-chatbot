@@ -21,6 +21,8 @@ export interface IChatMessage {
 
 export interface IChatSession {
   title: string;
+  subjectId: Types.ObjectId;  // which subject this chat is scoped to
+  userId: Types.ObjectId;     // owner of this chat session
   messages: IChatMessage[];
   createdAt: Date;
   updatedAt: Date;
@@ -56,6 +58,16 @@ const chatMessageSchema = new Schema<IChatMessage>(
 const chatSessionSchema = new Schema<IChatSession>(
   {
     title: { type: String, required: true, default: 'New Research Chat' },
+    subjectId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Subject',
+      required: true,
+    },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
     messages: [chatMessageSchema],
   },
   {
@@ -65,5 +77,6 @@ const chatSessionSchema = new Schema<IChatSession>(
 );
 
 chatSessionSchema.index({ updatedAt: -1 });
+chatSessionSchema.index({ userId: 1, updatedAt: -1 });
 
 export const ChatSessionModel = model<IChatSession>('ChatSession', chatSessionSchema);

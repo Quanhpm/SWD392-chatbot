@@ -11,11 +11,11 @@ export const useChatSession = () => {
     chatDispatch({ type: 'SET_ERROR', payload: message });
   };
 
-  const startNewSession = async (title?: string): Promise<IChatSession> => {
+  const startNewSession = async (subjectId?: string, title?: string): Promise<IChatSession> => {
     setError(null);
     chatDispatch({ type: 'SET_LOADING', payload: true });
     try {
-      const session = await chatApi.createSession(title);
+      const session = await chatApi.createSession(subjectId ?? '', title);
       appDispatch({ type: 'ADD_SESSION', payload: session });
       appDispatch({ type: 'SET_ACTIVE_SESSION', payload: session._id });
       chatDispatch({ type: 'SET_MESSAGES', payload: [] });
@@ -60,7 +60,7 @@ export const useChatSession = () => {
     }
   };
 
-  const postMessage = async (text: string) => {
+  const postMessage = async (text: string, subjectId?: string) => {
     let currentSessionId = appState.activeSessionId;
 
     setError(null);
@@ -69,7 +69,7 @@ export const useChatSession = () => {
     try {
       // 1. Create a session first if there isn't an active one
       if (!currentSessionId) {
-        const newSess = await chatApi.createSession();
+        const newSess = await chatApi.createSession(subjectId ?? '');
         currentSessionId = newSess._id;
         appDispatch({ type: 'ADD_SESSION', payload: newSess });
         appDispatch({ type: 'SET_ACTIVE_SESSION', payload: currentSessionId });

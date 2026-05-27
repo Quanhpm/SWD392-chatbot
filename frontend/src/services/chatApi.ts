@@ -4,8 +4,11 @@ import type { IChatSession, IChatMessage } from '../types/index.js';
 /**
  * Creates a new chat session
  */
-export const createSession = async (title?: string): Promise<IChatSession> => {
-  const response = await api.post<{ success: boolean; session: IChatSession }>('/chat/sessions', { title });
+export const createSession = async (subjectId: string, title?: string): Promise<IChatSession> => {
+  const response = await api.post<{ success: boolean; session: IChatSession }>('/chat/sessions', {
+    subjectId,
+    title,
+  });
   return response.data.session;
 };
 

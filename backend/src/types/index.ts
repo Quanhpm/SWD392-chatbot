@@ -4,6 +4,7 @@ import type { IChunk } from '../models/Chunk.js';
 
 export type FileType = 'pdf' | 'docx' | 'pptx';
 export type DocumentStatus = 'uploaded' | 'processing' | 'indexed' | 'failed';
+export type UserRole = 'teacher' | 'student';
 
 export interface PageText {
   pageNumber: number;

@@ -1,5 +1,21 @@
 export type FileType = 'pdf' | 'docx' | 'pptx';
 export type DocumentStatus = 'uploaded' | 'processing' | 'indexed' | 'failed';
+export type UserRole = 'teacher' | 'student';
+
+export interface IUser {
+  id: string;
+  username: string;
+  role: UserRole;
+  enrolledSubjects: string[];
+}
+
+export interface ISubject {
+  _id: string;
+  name: string;
+  description?: string;
+  teacherId?: string;
+  createdAt: string;
+}
 
 export interface IDocument {
   _id: string;
@@ -15,6 +31,7 @@ export interface IDocument {
   errorMessage?: string;
   totalChunks: number;
   totalPages?: number;
+  uploadedBy?: string;
   uploadedAt: string;
   processedAt?: string;
   indexedAt?: string;
@@ -43,6 +60,8 @@ export interface IChatMessage {
 export interface IChatSession {
   _id: string;
   title: string;
+  subjectId?: string;
+  userId?: string;
   messages: IChatMessage[];
   createdAt: string;
   updatedAt: string;
@@ -70,3 +89,12 @@ export interface TestSet {
   totalQuestions: number;
   questions: TestQuestion[];
 }
+
+export interface IChunk {
+  _id?: string;
+  documentId: string;
+  content: string;
+  chunkIndex: number;
+  pageNumbers: number[];
+}
+

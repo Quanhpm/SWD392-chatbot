@@ -1,21 +1,22 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext.js';
+import { useAuth } from '../../context/AuthContext.js';
 import { Icon } from '../shared/Icon.js';
 
 export const AppHeader: React.FC = () => {
   const { state, dispatch } = useApp();
+  const { state: authState, logout } = useAuth();
 
-  const handleToggleSidebar = () => {
-    dispatch({ type: 'TOGGLE_SIDEBAR' });
-  };
+  const user = authState.user;
+  const initials = user ? user.username.slice(0, 2).toUpperCase() : 'GS';
 
   return (
     <header className="app-header flex-center">
       <div className="header-left flex-center">
         <button
           className="menu-btn flex-center"
-          onClick={handleToggleSidebar}
-          aria-label="Toggle Navigation Sidebar"
+          onClick={() => dispatch({ type: 'TOGGLE_SIDEBAR' })}
+          aria-label="Toggle sidebar"
         >
           <Icon name={state.sidebarOpen ? 'menu_open' : 'menu'} />
         </button>
@@ -23,19 +24,36 @@ export const AppHeader: React.FC = () => {
           <div className="header-logo flex-center">
             <Icon name="auto_awesome" style={{ fontSize: '18px', color: 'var(--color-primary)' }} />
           </div>
-          <h1 className="header-title">SE1939 - Software Modeling and Design</h1>
+          <h1 className="header-title">EduSmart</h1>
         </div>
       </div>
+
       <div className="header-right flex-center">
-        <div className="user-avatar flex-center" title="John Doe">
-          JD
-        </div>
+        {user && (
+          <>
+            <span className="header-role-chip">
+              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                {user.role === 'teacher' ? 'school' : 'person'}
+              </span>
+              {user.role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}
+            </span>
+            <div className="header-user flex-center">
+              <div className="user-avatar flex-center" title={user.username}>
+                {initials}
+              </div>
+              <span className="user-name">{user.username}</span>
+            </div>
+            <button className="header-btn flex-center" onClick={logout} title="Đăng xuất">
+              <Icon name="logout" />
+            </button>
+          </>
+        )}
       </div>
 
       <style>{`
         .app-header {
           height: var(--header-height);
-          background-color: var(--color-surface);
+          background: var(--color-surface-container-lowest);
           border-bottom: 1px solid var(--color-outline-variant);
           justify-content: space-between;
           padding: 0 24px;
@@ -43,77 +61,74 @@ export const AppHeader: React.FC = () => {
           top: 0;
           z-index: 50;
           box-shadow: var(--shadow-sm);
+          grid-area: header;
         }
-        .header-left {
-          gap: var(--spacing-md);
-        }
-        .header-logo-container {
-          gap: var(--spacing-sm);
-        }
+        .header-left { gap: 12px; }
+        .header-logo-container { gap: 10px; }
         .header-logo {
           width: 32px;
           height: 32px;
-          background-color: var(--color-primary-fixed);
-          border: 1px solid var(--color-outline-variant);
+          background: var(--color-primary-fixed);
           border-radius: var(--radius-lg);
           box-shadow: var(--shadow-sm);
         }
-        .menu-btn {
-          width: 40px;
-          height: 40px;
-          border-radius: var(--radius-full);
-          transition: background-color var(--transition-fast);
-          display: none; /* Hidden on desktop by default */
-        }
-        .menu-btn:hover {
-          background-color: var(--color-surface-container-low);
-        }
         .header-title {
           font: var(--text-headline-md);
-          font-weight: 500;
-          color: var(--color-on-surface);
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--color-primary);
+          white-space: nowrap;
         }
-        .header-right {
-          gap: var(--spacing-sm);
-        }
-        .header-btn {
-          width: 40px;
-          height: 40px;
+        .menu-btn {
+          width: 40px; height: 40px;
           border-radius: var(--radius-full);
-          transition: background-color var(--transition-fast), color var(--transition-fast);
+          transition: background var(--transition-fast);
+          display: none;
           color: var(--color-on-surface-variant);
         }
-        .header-btn:hover {
-          background-color: var(--color-surface-container-low);
+        .menu-btn:hover { background: var(--color-surface-container-low); }
+        .header-right { gap: 12px; }
+        .header-role-chip {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 12px;
+          border-radius: var(--radius-full);
+          background: var(--color-primary-fixed);
           color: var(--color-primary);
+          font: var(--text-label-sm);
+        }
+        .header-user { gap: 8px; }
+        .user-name {
+          font: var(--text-label-md);
+          color: var(--color-on-surface);
+          display: none;
         }
         .user-avatar {
-          width: 32px;
-          height: 32px;
+          width: 32px; height: 32px;
           border-radius: var(--radius-full);
-          background-color: var(--color-primary-fixed);
-          color: var(--color-on-primary-fixed);
-          font: var(--text-label-md);
-          font-weight: 600;
-          border: 1px solid var(--color-outline-variant);
+          background: var(--color-primary);
+          color: white;
+          font: var(--text-label-sm);
+          font-weight: 700;
+          border: 2px solid var(--color-primary-fixed);
           cursor: pointer;
+          flex-shrink: 0;
         }
+        .header-btn {
+          width: 36px; height: 36px;
+          border-radius: var(--radius-full);
+          color: var(--color-on-surface-variant);
+          transition: background var(--transition-fast), color var(--transition-fast);
+        }
+        .header-btn:hover { background: var(--color-error-container); color: var(--color-on-error-container); }
 
-        /* Show menu button on tablet and mobile */
-        @media (max-width: 1023.98px) {
-          .menu-btn {
-            display: flex;
-          }
+        @media (max-width: 1023px) {
+          .menu-btn { display: flex; }
+          .header-role-chip { display: none; }
         }
-        @media (max-width: 767.98px) {
-          .header-title {
-            font-size: 16px;
-            line-height: 20px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 190px;
-          }
+        @media (min-width: 768px) {
+          .user-name { display: block; }
         }
       `}</style>
     </header>

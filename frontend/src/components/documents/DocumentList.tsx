@@ -6,7 +6,11 @@ import { EmptyState } from '../shared/EmptyState.js';
 import { Button } from '../shared/Button.js';
 import { Icon } from '../shared/Icon.js';
 
-export const DocumentList: React.FC = () => {
+interface DocumentListProps {
+  subjectFilter?: string;
+}
+
+export const DocumentList: React.FC<DocumentListProps> = ({ subjectFilter }) => {
   const { documents, removeDocument } = useDocuments();
   const { dispatch } = useApp();
   const [search, setSearch] = useState('');
@@ -33,7 +37,9 @@ export const DocumentList: React.FC = () => {
 
     const matchesStatus = statusFilter === 'all' || doc.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesSubject = !subjectFilter || doc.subject === subjectFilter;
+
+    return matchesSearch && matchesStatus && matchesSubject;
   });
 
   return (

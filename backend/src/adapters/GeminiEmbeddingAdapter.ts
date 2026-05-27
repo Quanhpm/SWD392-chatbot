@@ -1,5 +1,6 @@
 import { env } from '../config/environment.js';
 import { logger } from '../utils/logger.js';
+import type { IEmbeddingPort } from '../ports/IEmbeddingPort.js';
 
 const BATCH_SIZE = 20;
 const MAX_RETRIES = 3;
@@ -77,31 +78,31 @@ const requestEmbeddingBatch = async (batch: string[]): Promise<number[][]> => {
   return embeddings;
 };
 
-/** Generates one embedding using the configured Gemini embedding model. */
-export const generateEmbedding = async (text: string): Promise<number[]> => {
-  const embeddings = await generateEmbeddings([text]);
-  const embedding = embeddings[0];
-  if (!embedding) {
-    throw new Error('Gemini did not return an embedding.');
-  }
-  return embedding;
-};
-
-/** Generates embeddings in batches of 20 with exponential backoff. */
-export const generateEmbeddings = async (texts: string[]): Promise<number[][]> => {
-  const embeddings: number[][] = [];
-  const totalBatches = Math.ceil(texts.length / BATCH_SIZE);
-
-  for (let batchIndex = 0; batchIndex < totalBatches; batchIndex += 1) {
-    const batch = texts.slice(batchIndex * BATCH_SIZE, (batchIndex + 1) * BATCH_SIZE);
-    const response = await withRetry(
-      async () => requestEmbeddingBatch(batch),
-      `Embedding batch ${batchIndex + 1}/${totalBatches}`,
-    );
-
-    embeddings.push(...response);
-    logger.info(`Embedded batch ${batchIndex + 1}/${totalBatches}, ${batch.length} chunks`);
+export class GeminiEmbeddingAdapter implements IEmbeddingPort {
+  async generateEmbedding(text: string): Promise<number[]> {
+    const embeddings = await this.generateEmbeddings([text]);
+    const embedding = embeddings[0];
+    if (!embedding) {
+      throw new Error('Gemini did not return an embedding.');
+    }
+    return embedding;
   }
 
-  return embeddings;
-};
+  async generateEmbeddings(texts: string[]): Promise<number[][]> {
+    const embeddings: number[][] = [];
+    const totalBatches = Math.ceil(texts.length / BATCH_SIZE);
+
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex += 1) {
+      const batch = texts.slice(batchIndex * BATCH_SIZE, (batchIndex + 1) * BATCH_SIZE);
+      const response = await withRetry(
+        async () => requestEmbeddingBatch(batch),
+        `Embedding batch ${batchIndex + 1}/${totalBatches}`,
+      );
+
+      embeddings.push(...response);
+      logger.info(`Embedded batch ${batchIndex + 1}/${totalBatches}, ${batch.length} chunks`);
+    }
+
+    return embeddings;
+  }
+}

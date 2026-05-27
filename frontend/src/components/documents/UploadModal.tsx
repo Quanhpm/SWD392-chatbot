@@ -1,20 +1,38 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext.js';
 import { useUpload } from '../../hooks/useUpload.js';
+import { createSubject as apiCreateSubject } from '../../services/subjectApi.js';
 import { Modal } from '../shared/Modal.js';
 import { Button } from '../shared/Button.js';
 import { Icon } from '../shared/Icon.js';
 import { UploadProgress } from './UploadProgress.js';
 
-export const UploadModal: React.FC = () => {
+interface UploadModalProps {
+  /** Optional external close handler called after a successful upload or Cancel */
+  onClose?: () => void;
+}
+
+export const UploadModal: React.FC<UploadModalProps> = ({ onClose }) => {
   const { state, dispatch } = useApp();
-  const [subject, setSubject] = useState('Software Modeling and Design');
+  const subjects = state.subjects;
+  const [subject, setSubject] = useState('');
   const [chapter, setChapter] = useState<number>(1);
   const [chapterTitle, setChapterTitle] = useState('');
+  const [showNewSubject, setShowNewSubject] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [subjectCreating, setSubjectCreating] = useState(false);
+  const [subjectError, setSubjectError] = useState<string | null>(null);
+
+  // Auto-select first subject when subjects load
+  const effectiveSubject = subject || (subjects.length > 0 ? subjects[0]!.name : '');
 
   const handleClose = () => {
     dispatch({ type: 'SET_UPLOAD_MODAL', payload: false });
     reset();
+    setShowNewSubject(false);
+    setNewSubjectName('');
+    setSubjectError(null);
+    onClose?.();
   };
 
   const {
@@ -29,7 +47,6 @@ export const UploadModal: React.FC = () => {
     startUpload,
     reset,
   } = useUpload(() => {
-    // Refresh documents after success
     setTimeout(() => {
       handleClose();
     }, 1500);
@@ -37,11 +54,32 @@ export const UploadModal: React.FC = () => {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chapterTitle.trim()) return;
+    if (!chapterTitle.trim() || !effectiveSubject) return;
     try {
-      await startUpload(subject, chapter, chapterTitle.trim());
+      await startUpload(effectiveSubject, chapter, chapterTitle.trim());
     } catch (err) {
       console.error('Upload failed', err);
+    }
+  };
+
+  const [newSubjectPassword, setNewSubjectPassword] = useState('');
+
+  const handleCreateSubject = async () => {
+    const trimmed = newSubjectName.trim();
+    if (!trimmed || !newSubjectPassword.trim()) return;
+    setSubjectCreating(true);
+    setSubjectError(null);
+    try {
+      const created = await apiCreateSubject(trimmed, newSubjectPassword.trim());
+      dispatch({ type: 'ADD_SUBJECT', payload: created });
+      setSubject(created.name);
+      setNewSubjectName('');
+      setNewSubjectPassword('');
+      setShowNewSubject(false);
+    } catch (err) {
+      setSubjectError(err instanceof Error ? err.message : 'Failed to create subject');
+    } finally {
+      setSubjectCreating(false);
     }
   };
 
@@ -83,21 +121,71 @@ export const UploadModal: React.FC = () => {
 
         {uploadError && <span className="upload-error-label">{uploadError}</span>}
 
-        {/* Inputs */}
-        <div className="form-grid">
-          <div className="form-group">
-            <label htmlFor="subject">Subject</label>
+        {/* Subject selector */}
+        <div className="form-group">
+          <label htmlFor="subject">Subject</label>
+          <div className="subject-row">
             <select
               id="subject"
               className="form-input form-select"
-              value={subject}
+              value={effectiveSubject}
               onChange={(e) => setSubject(e.target.value)}
               disabled={isFormDisabled}
             >
-              <option value="Software Modeling and Design">Software Modeling and Design</option>
+              {subjects.map((s) => (
+                <option key={s._id} value={s.name}>{s.name}</option>
+              ))}
+              {subjects.length === 0 && <option value="">No subjects available</option>}
             </select>
+            <button
+              type="button"
+              className="add-subject-btn flex-center"
+              onClick={() => setShowNewSubject(!showNewSubject)}
+              disabled={isFormDisabled}
+              title="Create new subject"
+            >
+              <Icon name={showNewSubject ? 'close' : 'add'} style={{ fontSize: '18px' }} />
+            </button>
           </div>
+        </div>
 
+        {/* Inline new subject form */}
+        {showNewSubject && (
+          <div className="new-subject-fields fade-in">
+            <div className="new-subject-row">
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Tên môn học..."
+                value={newSubjectName}
+                onChange={(e) => setNewSubjectName(e.target.value)}
+                disabled={subjectCreating}
+                autoFocus
+              />
+              <input
+                type="password"
+                className="form-input"
+                placeholder="Mật khẩu..."
+                value={newSubjectPassword}
+                onChange={(e) => setNewSubjectPassword(e.target.value)}
+                disabled={subjectCreating}
+              />
+              <Button
+                type="button"
+                variant="filled"
+                onClick={handleCreateSubject}
+                disabled={!newSubjectName.trim() || !newSubjectPassword.trim() || subjectCreating}
+                loading={subjectCreating}
+              >
+                Tạo
+              </Button>
+            </div>
+          </div>
+        )}
+        {subjectError && <span className="upload-error-label">{subjectError}</span>}
+
+        {/* Chapter inputs */}
+        <div className="form-grid">
           <div className="form-group">
             <label htmlFor="chapter">Chapter Number</label>
             <input
@@ -112,20 +200,20 @@ export const UploadModal: React.FC = () => {
               required
             />
           </div>
-        </div>
 
-        <div className="form-group">
-          <label htmlFor="chapterTitle">Chapter Title</label>
-          <input
-            id="chapterTitle"
-            type="text"
-            className="form-input"
-            placeholder="e.g. Design Patterns, Iterative Development"
-            value={chapterTitle}
-            onChange={(e) => setChapterTitle(e.target.value)}
-            disabled={isFormDisabled}
-            required
-          />
+          <div className="form-group">
+            <label htmlFor="chapterTitle">Chapter Title</label>
+            <input
+              id="chapterTitle"
+              type="text"
+              className="form-input"
+              placeholder="e.g. Design Patterns, Iterative Development"
+              value={chapterTitle}
+              onChange={(e) => setChapterTitle(e.target.value)}
+              disabled={isFormDisabled}
+              required
+            />
+          </div>
         </div>
 
         {/* Progress Bar */}
@@ -146,7 +234,7 @@ export const UploadModal: React.FC = () => {
           <Button
             type="submit"
             icon="upload"
-            disabled={!file || !chapterTitle || isFormDisabled}
+            disabled={!file || !chapterTitle || !effectiveSubject || isFormDisabled}
           >
             Index Document
           </Button>
@@ -222,9 +310,39 @@ export const UploadModal: React.FC = () => {
           color: var(--color-error);
           text-align: left;
         }
+        .subject-row {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+        .subject-row .form-input {
+          flex: 1;
+        }
+        .add-subject-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: var(--radius-lg);
+          color: var(--color-primary);
+          border: 1px solid var(--color-outline-variant);
+          background-color: var(--color-surface-container-lowest);
+          transition: background-color var(--transition-fast), border-color var(--transition-fast);
+          flex-shrink: 0;
+        }
+        .add-subject-btn:hover:not(:disabled) {
+          background-color: var(--color-primary-fixed);
+          border-color: var(--color-primary);
+        }
+        .new-subject-row {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+        .new-subject-row .form-input {
+          flex: 1;
+        }
         .form-grid {
           display: grid;
-          grid-template-columns: 2fr 1fr;
+          grid-template-columns: 1fr 2fr;
           gap: 16px;
         }
         .modal-actions {

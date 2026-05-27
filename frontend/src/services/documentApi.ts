@@ -1,5 +1,5 @@
 import api from './api.js';
-import type { IDocument } from '../types/index.js';
+import type { IDocument, IChunk } from '../types/index.js';
 
 export interface UploadParams {
   file: File;
@@ -56,3 +56,12 @@ export const deleteDocument = async (id: string): Promise<string> => {
   const response = await api.delete<{ success: boolean; message: string }>(`/documents/${id}`);
   return response.data.message;
 };
+
+/**
+ * Gets plain text chunks of a single document sorted by index
+ */
+export const getDocumentChunks = async (id: string): Promise<IChunk[]> => {
+  const response = await api.get<{ success: boolean; chunks: IChunk[] }>(`/documents/${id}/chunks`);
+  return response.data.chunks;
+};
+

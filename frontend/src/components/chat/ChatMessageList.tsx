@@ -23,7 +23,11 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
   }, [messages, isLoading]);
 
   if (messages.length === 0) {
-    return <ChatWelcome onSuggestClick={onSuggestClick} />;
+    return (
+      <div className="chat-msg-list" style={{ justifyContent: 'center', minHeight: '100%' }}>
+        <ChatWelcome onSuggestClick={onSuggestClick} />
+      </div>
+    );
   }
 
   return (

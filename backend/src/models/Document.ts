@@ -1,4 +1,4 @@
-import { Schema, model, type HydratedDocument } from 'mongoose';
+import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 
 import type { DocumentStatus, FileType } from '../types/index.js';
 
@@ -18,6 +18,7 @@ export interface IDocument {
   uploadedAt: Date;
   processedAt?: Date;
   indexedAt?: Date;
+  uploadedBy: Types.ObjectId; // ref → User (teacher who uploaded)
 }
 
 export type DocumentDocument = HydratedDocument<IDocument>;
@@ -44,6 +45,11 @@ const documentSchema = new Schema<IDocument>(
     uploadedAt: { type: Date, default: Date.now },
     processedAt: { type: Date },
     indexedAt: { type: Date },
+    uploadedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
   },
   {
     versionKey: false,

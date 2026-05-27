@@ -27,7 +27,7 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
         {suggestions.map((prompt) => (
           <button
             key={prompt}
-            className="suggestion-chip text-truncate"
+            className="suggestion-chip"
             onClick={() => onSuggestClick(prompt)}
             title={prompt}
           >
@@ -38,6 +38,11 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
 
       <style>{`
         .chat-welcome {
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          width: 100% !important;
+          box-sizing: border-box;
           margin: auto;
           text-align: center;
           gap: 16px;
@@ -47,49 +52,62 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
           justify-content: center;
         }
         .welcome-icon-box {
-          width: 64px;
-          height: 64px;
+          width: 56px;
+          height: 56px;
           background-color: var(--color-surface-container-highest);
           border: 1px solid var(--color-outline-variant);
           border-radius: var(--radius-2xl);
           box-shadow: var(--shadow-sm);
+          flex-shrink: 0;
         }
         .welcome-title {
           font: var(--text-headline-md);
-          font-weight: 600;
+          font-weight: 700;
           color: var(--color-on-surface);
+          max-width: 100%;
+          word-break: keep-all;
+          overflow-wrap: break-word;
         }
         .welcome-subtitle {
-          font: var(--text-body-lg);
+          font: var(--text-body-sm);
           color: var(--color-on-surface-variant);
-          max-width: 448px;
-          line-height: 1.5;
+          max-width: 100%;
+          line-height: 1.6;
+          word-break: keep-all;
+          overflow-wrap: break-word;
         }
         .suggestions-container {
-          flex-direction: column;
-          gap: 8px;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
+          gap: 10px;
           width: 100%;
-          max-width: 500px;
-          margin-top: 12px;
+          max-width: 100%;
+          margin-top: 16px;
         }
         .suggestion-chip {
           width: 100%;
           background-color: var(--color-surface-container-lowest);
           border: 1px solid var(--color-outline-variant);
           border-radius: var(--radius-xl);
-          padding: 12px 18px;
-          font: var(--text-body-md);
+          padding: 12px 16px;
+          font: var(--text-body-sm);
           font-weight: 500;
           color: var(--color-on-surface-variant);
           text-align: left;
-          transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+          transition: all var(--transition-fast);
           cursor: pointer;
+          white-space: normal !important;
+          word-break: break-word !important;
+          line-height: 1.4 !important;
+          box-shadow: var(--shadow-sm);
         }
         .suggestion-chip:hover {
           background-color: var(--color-surface-container-low);
           border-color: var(--color-primary);
-          transform: translateY(-1px);
+          transform: translateY(-2px);
           color: var(--color-primary);
+          box-shadow: var(--shadow-md);
         }
       `}</style>
     </div>

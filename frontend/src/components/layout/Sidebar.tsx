@@ -1,88 +1,99 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
+import { useAuth } from '../../context/AuthContext.js';
 import { Icon } from '../shared/Icon.js';
-import { useDocuments } from '../../hooks/useDocuments.js';
 import { SessionList } from '../sessions/SessionList.js';
 
 export const Sidebar: React.FC = () => {
   const { state, dispatch } = useApp();
-  const { documents, removeDocument } = useDocuments();
+  const { state: authState, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleOpenUpload = () => {
-    dispatch({ type: 'SET_UPLOAD_MODAL', payload: true });
-  };
-
-  const getDocIcon = (type: string) => {
-    if (type === 'pdf') return 'picture_as_pdf';
-    if (type === 'docx') return 'description';
-    if (type === 'pptx') return 'slideshow';
-    return 'article';
-  };
+  const role = authState.user?.role;
+  const enrolledCount = authState.user?.enrolledSubjects.length ?? 0;
 
   const isActive = (path: string) => {
-    if (path === '/chat' && (location.pathname === '/' || location.pathname.startsWith('/chat'))) {
-      return true;
-    }
+    if (path === '/chat') return location.pathname === '/' || location.pathname.startsWith('/chat');
     return location.pathname === path;
   };
 
-  const handleDocClick = () => {
-    navigate('/documents');
-  };
-
-  const handleDeleteDoc = async (e: React.MouseEvent, docId: string) => {
-    e.stopPropagation();
-    if (confirm('Are you sure you want to delete this document and all its chunks?')) {
-      try {
-        await removeDocument(docId);
-      } catch (err) {
-        console.error('Deletion failed', err);
-      }
-    }
+  const navTo = (path: string) => {
+    navigate(path);
+    dispatch({ type: 'TOGGLE_SIDEBAR', payload: false });
   };
 
   return (
     <aside className={`app-sidebar ${state.sidebarOpen ? 'open' : ''}`}>
-      {/* 1. Add Sources button */}
-      <button className="add-source-btn flex-center" onClick={handleOpenUpload}>
-        <Icon name="add" className="add-icon" />
-        <span>Add Sources</span>
-      </button>
+      {/* Brand mark */}
+      <div className="sidebar-brand">
+        <div className="sidebar-brand-icon">
+          <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)', fontSize: 20 }}>auto_awesome</span>
+        </div>
+        <div>
+          <p className="sidebar-brand-name">EduSmart</p>
+          <p className="sidebar-brand-role">
+            {role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}
+          </p>
+        </div>
+      </div>
 
-      {/* 2. Navigation Cluster */}
+      {/* Upload button (teacher only) */}
+      {role === 'teacher' && (
+        <button
+          className="add-source-btn flex-center"
+          onClick={() => { dispatch({ type: 'SET_UPLOAD_MODAL', payload: true }); dispatch({ type: 'TOGGLE_SIDEBAR', payload: false }); }}
+        >
+          <Icon name="upload_file" className="add-icon" />
+          <span>Tải tài liệu lên</span>
+        </button>
+      )}
+
+      {/* Navigation */}
       <nav className="sidebar-nav">
-        <button
-          className={`nav-link flex-center ${isActive('/chat') ? 'active' : ''}`}
-          onClick={() => navigate('/chat')}
-        >
-          <Icon name="chat" />
-          <span>Notebook Guide</span>
-        </button>
-        <button
-          className={`nav-link flex-center ${isActive('/documents') ? 'active' : ''}`}
-          onClick={handleDocClick}
-        >
-          <Icon name="folder_open" />
-          <span>Shared Documents</span>
-        </button>
-        <button
-          className={`nav-link flex-center ${isActive('/test-set') ? 'active' : ''}`}
-          onClick={() => navigate('/test-set')}
-        >
-          <Icon name="analytics" />
-          <span>Evaluation Test Set</span>
-        </button>
+        <p className="nav-section-label">Điều hướng</p>
+
+        {role === 'teacher' ? (
+          <>
+            <button className={`nav-link flex-center ${isActive('/dashboard') ? 'active' : ''}`} onClick={() => navTo('/dashboard')}>
+              <Icon name="dashboard" />
+              <span>Bảng điều khiển</span>
+            </button>
+            <button className={`nav-link flex-center ${isActive('/documents') ? 'active' : ''}`} onClick={() => navTo('/documents')}>
+              <Icon name="folder_open" />
+              <span>Quản lý Tài liệu</span>
+            </button>
+            <button className={`nav-link flex-center ${isActive('/chat') ? 'active' : ''}`} onClick={() => navTo('/chat')}>
+              <Icon name="chat" />
+              <span>RAG Chatbot</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <button className={`nav-link flex-center ${isActive('/portal') ? 'active' : ''}`} onClick={() => navTo('/portal')}>
+              <Icon name="school" />
+              <span>Môn học của tôi</span>
+              {enrolledCount > 0 && <span className="nav-badge">{enrolledCount}</span>}
+            </button>
+            <button className={`nav-link flex-center ${isActive('/chat') ? 'active' : ''}`} onClick={() => navTo('/chat')}>
+              <Icon name="chat" />
+              <span>Hỏi đáp RAG</span>
+            </button>
+            <button className={`nav-link flex-center ${isActive('/documents') ? 'active' : ''}`} onClick={() => navTo('/documents')}>
+              <Icon name="folder_open" />
+              <span>Tài liệu học tập</span>
+            </button>
+          </>
+        )}
       </nav>
 
       <div className="divider" />
 
-      {/* 3. Session History List */}
+      {/* Chat session history */}
       <div className="sidebar-section-container">
         <div className="section-header-row">
-          <h3 className="section-header">Recent History</h3>
+          <h3 className="section-header">Lịch sử hội thoại</h3>
           <button
             className="new-chat-btn flex-center"
             onClick={() => {
@@ -90,7 +101,7 @@ export const Sidebar: React.FC = () => {
               dispatch({ type: 'TOGGLE_SIDEBAR', payload: false });
               navigate('/chat');
             }}
-            title="Start a new chat"
+            title="Cuộc hội thoại mới"
           >
             <Icon name="add_comment" style={{ fontSize: '16px' }} />
           </button>
@@ -100,84 +111,83 @@ export const Sidebar: React.FC = () => {
 
       <div className="divider" />
 
-      {/* 4. Document Vault list */}
-      <div className="sidebar-section-container flex-1">
-        <h3 className="section-header">Document Vault</h3>
-        <div className="doc-vault-list">
-          {documents.length === 0 ? (
-            <span className="no-docs-label">No indexed sources</span>
-          ) : (
-            documents.map((doc) => (
-              <div
-                key={doc._id}
-                className="doc-vault-item flex-center fade-in"
-                onClick={handleDocClick}
-                title={`${doc.originalName} (${doc.status})`}
-              >
-                <Icon name={getDocIcon(doc.fileType)} className="doc-icon" />
-                <span className="doc-name text-truncate">{doc.originalName}</span>
-                {doc.status === 'processing' || doc.status === 'uploaded' ? (
-                  <span className="spinner-indicator" />
-                ) : (
-                  <button
-                    className="delete-doc-btn flex-center"
-                    onClick={(e) => handleDeleteDoc(e, doc._id)}
-                    aria-label="Delete document"
-                  >
-                    <Icon name="delete" />
-                  </button>
-                )}
-              </div>
-            ))
-          )}
-      </div>
-    </div>
+      {/* User profile + logout at bottom */}
+      {authState.user && (
+        <div className="sidebar-user">
+          <div className="sidebar-user-info">
+            <div className="sidebar-user-avatar">
+              {authState.user.username.slice(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <p className="sidebar-user-name">{authState.user.username}</p>
+              <p className="sidebar-user-role">{role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}</p>
+            </div>
+          </div>
+          <button className="sidebar-logout-btn flex-center" onClick={logout} title="Đăng xuất">
+            <Icon name="logout" />
+          </button>
+        </div>
+      )}
 
       <style>{`
         .app-sidebar {
           width: var(--sidebar-width);
-          background-color: var(--color-surface-container-low);
+          background: var(--color-surface-container-low);
           border-right: 1px solid var(--color-outline-variant);
           display: flex;
           flex-direction: column;
-          padding: 24px 16px;
-          height: 100%;
+          padding: 20px 16px;
+          height: calc(100vh - var(--header-height));
           overflow-y: auto;
           gap: 16px;
+          position: sticky;
+          top: var(--header-height);
         }
 
-        /* 1. Add Source Button */
+        /* Brand */
+        .sidebar-brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 4px 8px 8px;
+        }
+        .sidebar-brand-icon {
+          width: 36px; height: 36px;
+          border-radius: var(--radius-lg);
+          background: var(--color-primary-fixed);
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .sidebar-brand-name { font: var(--text-label-md); color: var(--color-primary); font-weight: 700; }
+        .sidebar-brand-role { font: var(--text-label-sm); color: var(--color-on-surface-variant); margin-top: 1px; }
+
+        /* Add Source Button */
         .add-source-btn {
           width: 100%;
-          background-color: var(--color-surface-container-lowest);
-          border: 1px solid var(--color-outline-variant);
+          background: var(--color-primary);
+          color: white;
           border-radius: var(--radius-xl);
           padding: 12px;
-          color: var(--color-primary);
-          font: var(--text-headline-md);
-          font-size: 16px;
-          font-weight: 600;
+          font: var(--text-label-md);
           gap: 8px;
-          transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+          transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
           box-shadow: var(--shadow-sm);
         }
         .add-source-btn:hover {
-          background-color: var(--color-surface-container);
-          border-color: var(--color-primary);
+          background: var(--color-primary-container);
+          box-shadow: var(--shadow-md);
           transform: translateY(-1px);
         }
-        .add-source-btn:active {
-          transform: translateY(0);
-        }
-        .add-icon {
-          color: var(--color-primary);
-        }
 
-        /* 2. Navigation Link */
-        .sidebar-nav {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
+        /* Nav */
+        .sidebar-nav { display: flex; flex-direction: column; gap: 3px; }
+        .nav-section-label {
+          font: var(--text-label-sm);
+          color: var(--color-outline);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          padding: 0 8px;
+          margin-bottom: 4px;
         }
         .nav-link {
           width: 100%;
@@ -186,166 +196,82 @@ export const Sidebar: React.FC = () => {
           gap: 12px;
           color: var(--color-on-surface-variant);
           border-radius: var(--radius-lg);
-          transition: background-color var(--transition-fast), color var(--transition-fast);
+          transition: background var(--transition-fast), color var(--transition-fast);
           font: var(--text-body-md);
+          font-size: 14px;
           font-weight: 500;
+          position: relative;
         }
-        .nav-link:hover {
-          background-color: var(--color-surface-container-high);
-          color: var(--color-on-surface);
-        }
-        .nav-link.active {
-          background-color: var(--color-primary-fixed);
-          color: var(--color-on-primary-fixed);
-          font-weight: 600;
-        }
-
-        .divider {
-          height: 1px;
-          background-color: var(--color-outline-variant);
-          margin: 4px 0;
-          opacity: 0.5;
+        .nav-link:hover { background: var(--color-surface-container-high); color: var(--color-on-surface); }
+        .nav-link.active { background: var(--color-primary-fixed); color: var(--color-primary); font-weight: 600; }
+        .nav-badge {
+          position: absolute;
+          right: 12px;
+          background: var(--color-primary);
+          color: white;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 1px 7px;
+          border-radius: var(--radius-full);
         }
 
-        /* Section Container */
-        .sidebar-section-container {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
+        .divider { height: 1px; background: var(--color-outline-variant); opacity: 0.5; margin: 2px 0; }
+
+        .sidebar-section-container { display: flex; flex-direction: column; gap: 8px; flex: 1; overflow: hidden; }
+        .section-header { font: var(--text-label-sm); color: var(--color-outline); text-transform: uppercase; letter-spacing: 0.05em; padding-left: 8px; }
+        .section-header-row { display: flex; align-items: center; justify-content: space-between; }
+        .new-chat-btn {
+          width: 28px; height: 28px;
+          border-radius: var(--radius-lg);
+          color: var(--color-primary);
+          transition: background var(--transition-fast), transform var(--transition-fast);
         }
-        .sidebar-section-container.flex-1 {
-          flex: 1;
-          overflow-y: auto;
-        }
-        .section-header {
-          font: var(--text-label-md);
-          color: var(--color-secondary);
-          opacity: 0.8;
-          text-transform: uppercase;
-          letter-spacing: var(--text-label-md-spacing);
-          padding-left: 8px;
-        }
-        .section-header-row {
+        .new-chat-btn:hover { background: var(--color-primary-fixed); transform: scale(1.1); }
+
+        /* User profile */
+        .sidebar-user {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          padding: 10px 8px;
+          border-radius: var(--radius-xl);
+          border: 1px solid var(--color-outline-variant);
+          background: var(--color-surface-container-lowest);
+          margin-top: auto;
         }
-        .new-chat-btn {
-          width: 28px;
-          height: 28px;
-          border-radius: var(--radius-lg);
-          color: var(--color-primary);
-          transition: background-color var(--transition-fast), transform var(--transition-fast);
-        }
-        .new-chat-btn:hover {
-          background-color: var(--color-primary-fixed);
-          transform: scale(1.1);
-        }
-        .new-chat-btn:active {
-          transform: scale(0.95);
-        }
-
-        /* Document Vault List */
-        .doc-vault-list {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          overflow-y: auto;
-        }
-        .no-docs-label {
-          font: var(--text-body-md);
-          color: var(--color-outline);
-          padding-left: 8px;
-          font-style: italic;
-        }
-        .doc-vault-item {
-          justify-content: flex-start;
-          padding: 8px 12px;
-          gap: 10px;
-          border-radius: var(--radius-lg);
-          cursor: pointer;
-          transition: background-color var(--transition-fast);
-          position: relative;
-        }
-        .doc-vault-item:hover {
-          background-color: var(--color-surface-container-high);
-        }
-        .doc-icon {
-          font-size: 18px;
-          color: var(--color-secondary);
-          transition: color var(--transition-fast);
-        }
-        .doc-vault-item:hover .doc-icon {
-          color: var(--color-primary);
-        }
-        .doc-name {
-          font: var(--text-body-md);
-          color: var(--color-on-surface);
-          flex: 1;
-        }
-        .delete-doc-btn {
-          color: var(--color-secondary);
-          opacity: 0;
-          transition: opacity var(--transition-fast), color var(--transition-fast);
-          padding: 2px;
-          border-radius: var(--radius-sm);
-        }
-        .delete-doc-btn:hover {
-          color: var(--color-error);
-          background-color: var(--color-error-container);
-        }
-        .doc-vault-item:hover .delete-doc-btn {
-          opacity: 1;
-        }
-
-        /* Spinner for loading docs */
-        .spinner-indicator {
-          width: 12px;
-          height: 12px;
-          border: 2px solid var(--color-outline-variant);
-          border-top-color: var(--color-primary);
+        .sidebar-user-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .sidebar-user-avatar {
+          width: 36px; height: 36px;
           border-radius: var(--radius-full);
-          animation: spin 1s linear infinite;
+          background: var(--color-primary);
+          color: white;
+          display: flex; align-items: center; justify-content: center;
+          font: var(--text-label-sm); font-weight: 700;
+          flex-shrink: 0;
         }
-
-        /* Footer links */
-        .sidebar-footer {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
-        }
-        .footer-link {
-          justify-content: flex-start;
-          padding: 8px 12px;
-          gap: 12px;
-          color: var(--color-on-surface-variant);
+        .sidebar-user-name { font: var(--text-label-md); color: var(--color-on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
+        .sidebar-user-role { font: var(--text-label-sm); color: var(--color-on-surface-variant); margin-top: 1px; }
+        .sidebar-logout-btn {
+          width: 32px; height: 32px;
           border-radius: var(--radius-lg);
-          transition: background-color var(--transition-fast);
-          font: var(--text-body-md);
+          color: var(--color-on-surface-variant);
+          transition: background var(--transition-fast), color var(--transition-fast);
+          flex-shrink: 0;
         }
-        .footer-link:hover {
-          background-color: var(--color-surface-container-high);
-        }
+        .sidebar-logout-btn:hover { background: var(--color-error-container); color: var(--color-on-error-container); }
 
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        /* Mobile Responsive overlay drawer logic */
-        @media (max-width: 1023.98px) {
+        @media (max-width: 1023px) {
           .app-sidebar {
             position: fixed;
             top: var(--header-height);
-            left: 0;
-            bottom: 0;
+            left: 0; bottom: 0;
             z-index: 100;
             transform: translateX(-100%);
-            transition: transform var(--transition-base);
-            box-shadow: var(--shadow-lg);
+            transition: transform var(--transition-slow);
+            box-shadow: var(--shadow-xl);
+            height: calc(100vh - var(--header-height));
           }
-          .app-sidebar.open {
-            transform: translateX(0);
-          }
+          .app-sidebar.open { transform: translateX(0); }
         }
       `}</style>
     </aside>

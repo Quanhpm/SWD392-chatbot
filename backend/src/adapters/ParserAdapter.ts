@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
-
 import mammoth from 'mammoth';
 import officeParser from 'officeparser';
 import pdfParse from 'pdf-parse';
 
+import type { IParserPort } from '../ports/IParserPort.js';
 import type { FileType, PageText, ParseResult } from '../types/index.js';
 
 interface PdfTextItem {
@@ -61,24 +61,25 @@ const parsePptx = async (filePath: string): Promise<ParseResult> => {
   return { text: cleanText(text) };
 };
 
-/** Extracts normalized plain text from supported course document files. */
-export const parseDocument = async (filePath: string, fileType: FileType): Promise<ParseResult> => {
-  try {
-    if (fileType === 'pdf') {
-      return await parsePdf(filePath);
-    }
+export class ParserAdapter implements IParserPort {
+  async parse(filePath: string, fileType: FileType): Promise<ParseResult> {
+    try {
+      if (fileType === 'pdf') {
+        return await parsePdf(filePath);
+      }
 
-    if (fileType === 'docx') {
-      return await parseDocx(filePath);
-    }
+      if (fileType === 'docx') {
+        return await parseDocx(filePath);
+      }
 
-    if (fileType === 'pptx') {
-      return await parsePptx(filePath);
-    }
+      if (fileType === 'pptx') {
+        return await parsePptx(filePath);
+      }
 
-    throw new Error(`Unsupported file type: ${fileType}`);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown parsing error';
-    throw new Error(`Failed to parse ${fileType.toUpperCase()} document: ${message}`);
+      throw new Error(`Unsupported file type: ${fileType}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown parsing error';
+      throw new Error(`Failed to parse ${fileType.toUpperCase()} document: ${message}`);
+    }
   }
-};
+}
