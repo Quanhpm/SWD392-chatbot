@@ -5,6 +5,9 @@ import { SubjectModel } from '../models/Subject.js';
 import { UserModel } from '../models/User.js';
 import { DocumentModel } from '../models/Document.js';
 import { ChunkModel } from '../models/Chunk.js';
+import { ChatSessionModel } from '../models/ChatSession.js';
+import { DocumentAssistModel } from '../models/DocumentAssist.js';
+import { QuestionQuotaModel } from '../models/QuestionQuota.js';
 import { GeminiEmbeddingAdapter } from '../adapters/GeminiEmbeddingAdapter.js';
 
 const run = async () => {
@@ -90,6 +93,9 @@ const run = async () => {
     const oldDocIds = oldDocs.map(d => d._id);
     
     await ChunkModel.deleteMany({ documentId: { $in: oldDocIds } }).exec();
+    await DocumentAssistModel.deleteMany({ documentId: { $in: oldDocIds } }).exec();
+    await ChatSessionModel.deleteMany({ documentId: { $in: oldDocIds } }).exec();
+    await QuestionQuotaModel.deleteMany({ documentId: { $in: oldDocIds } }).exec();
     await DocumentModel.deleteMany({ subject: subjectName }).exec();
     console.log('🧹 Cleaned up old documents and chunks for this course');
 
@@ -110,6 +116,7 @@ const run = async () => {
         fileType: 'pdf',
         fileSize: 10240, // Mock 10KB
         mimeType: 'application/pdf',
+        subjectId: subject._id,
         subject: subjectName,
         chapter: chData.chapter,
         chapterTitle: chData.chapterTitle,

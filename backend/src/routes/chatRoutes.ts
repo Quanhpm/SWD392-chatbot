@@ -3,7 +3,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import { chatService } from '../config/dependencies.js';
 import { requireAuth } from '../middleware/auth.js';
 import {
-  createSessionWithSubjectValidators,
+  createSessionWithDocumentValidators,
   mongoIdParamValidator,
   sendMessageValidators,
   validateRequest,
@@ -16,21 +16,21 @@ chatRoutes.use(requireAuth);
 
 /**
  * POST /api/chat/sessions
- * Creates a session scoped to a subject.
- * Body: { subjectId, title? }
- * Student: verified enrolled in subjectId → 403 if not.
+ * Creates a session scoped to a document.
+ * Body: { documentId, title? }
+ * Student: verified enrolled in the document's subject → 403 if not.
  */
 chatRoutes.post(
   '/sessions',
-  createSessionWithSubjectValidators,
+  createSessionWithDocumentValidators,
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { subjectId, title } = req.body as { subjectId: string; title?: string };
+      const { documentId, title } = req.body as { documentId: string; title?: string };
 
       const session = await chatService.createChatSession(
         title,
-        subjectId,
+        documentId,
         req.user!.id,
         req.user!.role,
         req.user!.enrolledSubjects.map((id) => id.toString()),
@@ -81,8 +81,8 @@ chatRoutes.get(
  * Body: { message }
  * Security enforcements (inside chatService.generateChatResponse):
  *   - Verifies session ownership
- *   - Verifies student enrollment in session's subject
- *   - Restricts chunk retrieval to session's subject (prevents cross-course leaks)
+ *   - Verifies student enrollment in the selected document's subject
+ *   - Restricts chunk retrieval to the selected document
  */
 chatRoutes.post(
   '/sessions/:id/messages',
@@ -108,6 +108,7 @@ chatRoutes.post(
           citations: response.citations,
           createdAt: new Date().toISOString(),
         },
+        quota: response.quotaStatus,
       });
     } catch (error) {
       next(error);

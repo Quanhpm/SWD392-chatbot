@@ -12,15 +12,22 @@ import { cosineSimilarity } from '../utils/cosineSimilarity.js';
  * @param subjectFilter - SECURITY: When provided, restricts chunk retrieval to only chunks
  *                        where `metadata.subject` matches this value (MongoDB query-level filter).
  *                        This prevents cross-course information leaks in RAG responses.
+ * @param documentIdFilter - When provided, restricts retrieval to one selected document.
  */
 export const retrieveRelevantChunks = async (
   queryEmbedding: number[],
   topK = env.topK,
   similarityThreshold = env.similarityThreshold,
   subjectFilter?: string,
+  documentIdFilter?: string,
 ): Promise<RetrievalResult[]> => {
-  // Apply MongoDB-level subject filter when provided
-  const query = subjectFilter ? { 'metadata.subject': subjectFilter } : {};
+  const query: Record<string, unknown> = {};
+  if (subjectFilter) {
+    query['metadata.subject'] = subjectFilter;
+  }
+  if (documentIdFilter) {
+    query.documentId = documentIdFilter;
+  }
 
   const chunks = await ChunkModel.find(query).exec();
 

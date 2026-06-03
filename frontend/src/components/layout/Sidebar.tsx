@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
 import { useAuth } from '../../context/AuthContext.js';
 import { Icon } from '../shared/Icon.js';
 import { SessionList } from '../sessions/SessionList.js';
+import { getMySubscription } from '../../services/subscriptionApi.js';
 
 export const Sidebar: React.FC = () => {
   const { state, dispatch } = useApp();
@@ -13,6 +14,15 @@ export const Sidebar: React.FC = () => {
 
   const role = authState.user?.role;
   const enrolledCount = authState.user?.enrolledSubjects.length ?? 0;
+  const [planName, setPlanName] = useState('free');
+
+  useEffect(() => {
+    if (role !== 'student') return;
+
+    void getMySubscription()
+      .then(({ plan }) => setPlanName(plan.name))
+      .catch((error) => console.error('Failed to load subscription badge:', error));
+  }, [authState.user?.id, role, location.pathname]);
 
   const isActive = (path: string) => {
     if (path === '/chat') return location.pathname === '/' || location.pathname.startsWith('/chat');
@@ -84,6 +94,10 @@ export const Sidebar: React.FC = () => {
               <Icon name="folder_open" />
               <span>Tài liệu học tập</span>
             </button>
+            <button className={`nav-link flex-center ${isActive('/pricing') ? 'active' : ''}`} onClick={() => navTo('/pricing')}>
+              <Icon name="workspace_premium" />
+              <span>Gói đăng ký</span>
+            </button>
           </>
         )}
       </nav>
@@ -120,7 +134,12 @@ export const Sidebar: React.FC = () => {
             </div>
             <div>
               <p className="sidebar-user-name">{authState.user.username}</p>
-              <p className="sidebar-user-role">{role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}</p>
+              <div className="sidebar-user-meta">
+                <p className="sidebar-user-role">{role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}</p>
+                <span className={`sidebar-plan-badge sidebar-plan-${role === 'teacher' ? 'teacher' : planName}`}>
+                  {role === 'teacher' ? 'Unlimited' : planName}
+                </span>
+              </div>
             </div>
           </div>
           <button className="sidebar-logout-btn flex-center" onClick={logout} title="Đăng xuất">
@@ -251,6 +270,20 @@ export const Sidebar: React.FC = () => {
         }
         .sidebar-user-name { font: var(--text-label-md); color: var(--color-on-surface); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 130px; }
         .sidebar-user-role { font: var(--text-label-sm); color: var(--color-on-surface-variant); margin-top: 1px; }
+        .sidebar-user-meta { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+        .sidebar-plan-badge {
+          padding: 1px 6px;
+          border-radius: var(--radius-full);
+          font-size: 9px;
+          font-weight: 700;
+          line-height: 1.5;
+          text-transform: capitalize;
+          background: var(--color-primary-fixed);
+          color: var(--color-primary);
+        }
+        .sidebar-plan-plus { background: #fef3c7; color: #92400e; }
+        .sidebar-plan-pro { background: #ede9fe; color: #6d28d9; }
+        .sidebar-plan-teacher { background: var(--color-secondary-container); color: var(--color-on-secondary-container); }
         .sidebar-logout-btn {
           width: 32px; height: 32px;
           border-radius: var(--radius-lg);

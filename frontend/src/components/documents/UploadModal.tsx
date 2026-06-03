@@ -15,7 +15,7 @@ interface UploadModalProps {
 export const UploadModal: React.FC<UploadModalProps> = ({ onClose }) => {
   const { state, dispatch } = useApp();
   const subjects = state.subjects;
-  const [subject, setSubject] = useState('');
+  const [subjectId, setSubjectId] = useState('');
   const [chapter, setChapter] = useState<number>(1);
   const [chapterTitle, setChapterTitle] = useState('');
   const [showNewSubject, setShowNewSubject] = useState(false);
@@ -24,7 +24,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ onClose }) => {
   const [subjectError, setSubjectError] = useState<string | null>(null);
 
   // Auto-select first subject when subjects load
-  const effectiveSubject = subject || (subjects.length > 0 ? subjects[0]!.name : '');
+  const effectiveSubjectId = subjectId || (subjects.length > 0 ? subjects[0]!._id : '');
 
   const handleClose = () => {
     dispatch({ type: 'SET_UPLOAD_MODAL', payload: false });
@@ -54,9 +54,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({ onClose }) => {
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chapterTitle.trim() || !effectiveSubject) return;
+    if (!chapterTitle.trim() || !effectiveSubjectId) return;
     try {
-      await startUpload(effectiveSubject, chapter, chapterTitle.trim());
+      await startUpload(effectiveSubjectId, chapter, chapterTitle.trim());
     } catch (err) {
       console.error('Upload failed', err);
     }
@@ -72,7 +72,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ onClose }) => {
     try {
       const created = await apiCreateSubject(trimmed, newSubjectPassword.trim());
       dispatch({ type: 'ADD_SUBJECT', payload: created });
-      setSubject(created.name);
+      setSubjectId(created._id);
       setNewSubjectName('');
       setNewSubjectPassword('');
       setShowNewSubject(false);
@@ -128,12 +128,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({ onClose }) => {
             <select
               id="subject"
               className="form-input form-select"
-              value={effectiveSubject}
-              onChange={(e) => setSubject(e.target.value)}
+              value={effectiveSubjectId}
+              onChange={(e) => setSubjectId(e.target.value)}
               disabled={isFormDisabled}
             >
               {subjects.map((s) => (
-                <option key={s._id} value={s.name}>{s.name}</option>
+                <option key={s._id} value={s._id}>{s.name}</option>
               ))}
               {subjects.length === 0 && <option value="">No subjects available</option>}
             </select>
@@ -234,7 +234,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ onClose }) => {
           <Button
             type="submit"
             icon="upload"
-            disabled={!file || !chapterTitle || !effectiveSubject || isFormDisabled}
+            disabled={!file || !chapterTitle || !effectiveSubjectId || isFormDisabled}
           >
             Index Document
           </Button>

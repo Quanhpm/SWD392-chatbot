@@ -14,6 +14,7 @@ import { StudentPortal } from './pages/StudentPortal.js';
 // Lazy-loaded heavy pages
 const ChatPage = React.lazy(() => import('./pages/ChatPage.js').then(m => ({ default: m.ChatPage })));
 const DocumentsPage = React.lazy(() => import('./pages/DocumentsPage.js').then(m => ({ default: m.DocumentsPage })));
+const PricingPage = React.lazy(() => import('./pages/PricingPage.js').then(m => ({ default: m.PricingPage })));
 const StudyPage = React.lazy(() => import('./pages/StudyPage.js').then(m => ({ default: m.StudyPage })));
 
 /** Inner app shell — only renders when authenticated. Needs AppContext. */
@@ -57,8 +58,10 @@ const AuthenticatedApp: React.FC = () => {
 
             {/* Shared routes */}
             <Route path="/chat" element={<ChatPage />} />
+            <Route path="/chat/:sessionId" element={<ChatPage />} />
             <Route path="/study/:subjectId" element={<StudyPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/pricing" element={<PricingPage />} />
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />

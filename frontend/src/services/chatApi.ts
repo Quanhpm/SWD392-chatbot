@@ -1,12 +1,17 @@
 import api from './api.js';
-import type { IChatSession, IChatMessage } from '../types/index.js';
+import type { IChatSession, IChatMessage, IQuotaStatus } from '../types/index.js';
+
+interface SendMessageResponse {
+  reply: IChatMessage;
+  quota?: IQuotaStatus;
+}
 
 /**
- * Creates a new chat session
+ * Creates a new chat session scoped to a document
  */
-export const createSession = async (subjectId: string, title?: string): Promise<IChatSession> => {
+export const createSession = async (documentId: string, title?: string): Promise<IChatSession> => {
   const response = await api.post<{ success: boolean; session: IChatSession }>('/chat/sessions', {
-    subjectId,
+    documentId,
     title,
   });
   return response.data.session;
@@ -31,11 +36,14 @@ export const getSessionById = async (id: string): Promise<IChatSession> => {
 /**
  * Sends a message in a chat session and awaits an assistant response
  */
-export const sendMessage = async (sessionId: string, message: string): Promise<IChatMessage> => {
-  const response = await api.post<{ success: boolean; reply: IChatMessage }>(`/chat/sessions/${sessionId}/messages`, {
+export const sendMessage = async (sessionId: string, message: string): Promise<SendMessageResponse> => {
+  const response = await api.post<{ success: boolean; reply: IChatMessage; quota?: IQuotaStatus }>(`/chat/sessions/${sessionId}/messages`, {
     message,
   });
-  return response.data.reply;
+  return {
+    reply: response.data.reply,
+    quota: response.data.quota,
+  };
 };
 
 /**

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../../context/AppContext.js';
+import { useAuth } from '../../context/AuthContext.js';
 import { Icon } from '../shared/Icon.js';
 
 interface ChatInputProps {
@@ -14,6 +15,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder = 'Ask a question about the course materials...',
 }) => {
   const { state: appState, dispatch: appDispatch } = useApp();
+  const { state: authState } = useAuth();
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -132,15 +134,17 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       <div className="chat-action-bar">
         <div className="action-bar-left">
-          <button
-            type="button"
-            className="action-btn attach-btn flex-center"
-            onClick={openUploadModal}
-            title="Attach Course Document (PDF, DOCX, PPTX)"
-            disabled={disabled}
-          >
-            <Icon name="attach_file" />
-          </button>
+          {authState.user?.role === 'teacher' && (
+            <button
+              type="button"
+              className="action-btn attach-btn flex-center"
+              onClick={openUploadModal}
+              title="Attach Course Document (PDF, DOCX, PPTX)"
+              disabled={disabled}
+            >
+              <Icon name="attach_file" />
+            </button>
+          )}
           
           <button
             type="button"

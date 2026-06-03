@@ -24,6 +24,7 @@ export interface IDocument {
   fileType: FileType;
   fileSize: number;
   mimeType: string;
+  subjectId?: string;
   subject: string;
   chapter: number;
   chapterTitle: string;
@@ -61,6 +62,7 @@ export interface IChatSession {
   _id: string;
   title: string;
   subjectId?: string;
+  documentId?: string;
   userId?: string;
   messages: IChatMessage[];
   createdAt: string;
@@ -98,3 +100,53 @@ export interface IChunk {
   pageNumbers: number[];
 }
 
+// ── Subscription & Quota ──
+
+export interface ISubscriptionPlan {
+  _id: string;
+  name: 'free' | 'plus' | 'pro';
+  displayName: string;
+  price: number;
+  questionLimit: number;
+  durationDays: number | null;
+  features: string[];
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface IUserSubscription {
+  _id: string;
+  userId: string;
+  planName: 'free' | 'plus' | 'pro';
+  status: 'pending' | 'active' | 'expired' | 'cancelled';
+  startDate: string;
+  endDate: string | null;
+  paymentMethod: string;
+  paymentReference?: string;
+  approvedBy?: string;
+  createdAt: string;
+}
+
+export interface IQuotaStatus {
+  allowed: boolean;
+  used: number;
+  limit: number;
+  planName: string;
+  remaining: number;
+}
+
+export interface IQuotaUsage {
+  _id: string;
+  userId: string;
+  documentId: {
+    _id: string;
+    originalName: string;
+    subject: string;
+    chapter: number;
+    chapterTitle: string;
+  };
+  questionCount: number;
+  periodStart: string;
+  periodEnd: string | null;
+  lastQuestionAt: string;
+}

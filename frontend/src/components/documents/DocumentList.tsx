@@ -8,9 +8,10 @@ import { Icon } from '../shared/Icon.js';
 
 interface DocumentListProps {
   subjectFilter?: string;
+  canManage?: boolean;
 }
 
-export const DocumentList: React.FC<DocumentListProps> = ({ subjectFilter }) => {
+export const DocumentList: React.FC<DocumentListProps> = ({ subjectFilter, canManage = true }) => {
   const { documents, removeDocument } = useDocuments();
   const { dispatch } = useApp();
   const [search, setSearch] = useState('');
@@ -75,9 +76,11 @@ export const DocumentList: React.FC<DocumentListProps> = ({ subjectFilter }) => 
             <option value="failed">Failed</option>
           </select>
 
-          <Button icon="add" onClick={handleOpenUpload}>
-            Add Material
-          </Button>
+          {canManage && (
+            <Button icon="add" onClick={handleOpenUpload}>
+              Add Material
+            </Button>
+          )}
         </div>
       </div>
 
@@ -88,11 +91,13 @@ export const DocumentList: React.FC<DocumentListProps> = ({ subjectFilter }) => 
           title={documents.length === 0 ? 'No documents indexed' : 'No matches found'}
           description={
             documents.length === 0
-              ? 'Upload course PDF, DOCX, or PPTX slides to parse and generate embeddings.'
+              ? canManage
+                ? 'Upload course PDF, DOCX, or PPTX slides to parse and generate embeddings.'
+                : 'No indexed learning materials are available for your enrolled subjects yet.'
               : 'Try broadening your search terms or changing status filters.'
           }
           action={
-            documents.length === 0 ? (
+            documents.length === 0 && canManage ? (
               <Button onClick={handleOpenUpload} icon="add">
                 Upload First Material
               </Button>
@@ -110,12 +115,17 @@ export const DocumentList: React.FC<DocumentListProps> = ({ subjectFilter }) => 
                 <th>Status</th>
                 <th>Index Size</th>
                 <th>Uploaded</th>
-                <th aria-label="Actions"></th>
+                {canManage && <th aria-label="Actions"></th>}
               </tr>
             </thead>
             <tbody>
               {filteredDocs.map((doc) => (
-                <DocumentCard key={doc._id} document={doc} onDelete={handleDelete} />
+                <DocumentCard
+                  key={doc._id}
+                  document={doc}
+                  onDelete={handleDelete}
+                  canManage={canManage}
+                />
               ))}
             </tbody>
           </table>

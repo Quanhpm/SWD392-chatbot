@@ -8,6 +8,7 @@ export interface IDocument {
   fileType: FileType;
   fileSize: number;
   mimeType: string;
+  subjectId: Types.ObjectId; // ref -> Subject
   subject: string;
   chapter: number;
   chapterTitle: string;
@@ -30,6 +31,11 @@ const documentSchema = new Schema<IDocument>(
     fileType: { type: String, required: true, enum: ['pdf', 'docx', 'pptx'] },
     fileSize: { type: Number, required: true },
     mimeType: { type: String, required: true },
+    subjectId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Subject',
+      required: true,
+    },
     subject: { type: String, required: true, trim: true },
     chapter: { type: Number, required: true, min: 0 },
     chapterTitle: { type: String, required: true, trim: true },
@@ -56,6 +62,7 @@ const documentSchema = new Schema<IDocument>(
   },
 );
 
+documentSchema.index({ subjectId: 1, status: 1 });
 documentSchema.index({ subject: 1, status: 1 });
 documentSchema.index({ uploadedAt: -1 });
 

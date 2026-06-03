@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext.js';
 import { useAuth } from '../context/AuthContext.js';
@@ -6,8 +6,10 @@ import { ChatProvider, useChat } from '../context/ChatContext.js';
 import { useChatSession } from '../hooks/useChatSession.js';
 import { ChatMessageList } from '../components/chat/ChatMessageList.js';
 import { ChatInput } from '../components/chat/ChatInput.js';
+import { QuotaIndicator } from '../components/chat/QuotaIndicator.js';
 import { ErrorToast } from '../components/shared/ErrorToast.js';
-import type { ISubject } from '../types/index.js';
+import { getDocumentQuota } from '../services/subscriptionApi.js';
+import type { IDocument, IQuotaStatus } from '../types/index.js';
 
 const ChatInner: React.FC = () => {
   const { sessionId } = useParams<{ sessionId?: string }>();
@@ -25,18 +27,31 @@ const ChatInner: React.FC = () => {
     postMessage,
   } = useChatSession();
 
-  // Resolve initial subjectId from router state (from StudentPortal) or first enrolled subject
-  const routerSubjectId = (location.state as { subjectId?: string } | null)?.subjectId ?? null;
-  const [activeSubjectId, setActiveSubjectId] = useState<string | null>(routerSubjectId);
+  // Resolve initial documentId from router state or first available document.
+  const routerDocumentId = (location.state as { documentId?: string } | null)?.documentId ?? null;
+  const [activeDocumentId, setActiveDocumentId] = useState<string | null>(routerDocumentId);
+  const [quota, setQuota] = useState<IQuotaStatus | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
 
-  const subjects = appState.subjects as ISubject[];
+  const documents = appState.documents as IDocument[];
   const role = authState.user?.role;
-  const enrolledIds = new Set(authState.user?.enrolledSubjects ?? []);
 
-  // For students, filter to only enrolled subjects
-  const availableSubjects = role === 'teacher'
-    ? subjects
-    : subjects.filter((s) => enrolledIds.has(s._id));
+  const availableDocuments = documents.filter((doc) => doc.status === 'indexed');
+  const sessionDocumentId = appState.sessions.find((session) => session._id === activeSessionId)?.documentId;
+  const quotaDocumentId = sessionDocumentId ?? activeDocumentId;
+
+  const refreshQuota = useCallback(async (documentId: string) => {
+    if (role !== 'student') return;
+
+    try {
+      setQuotaLoading(true);
+      setQuota(await getDocumentQuota(documentId));
+    } catch (err) {
+      console.error('Failed to load question quota:', err);
+    } finally {
+      setQuotaLoading(false);
+    }
+  }, [role]);
 
   // Sync URL ↔ activeSessionId
   useEffect(() => {
@@ -58,11 +73,45 @@ const ChatInner: React.FC = () => {
     }
   }, [activeSessionId, sessionId]);
 
+  useEffect(() => {
+    const firstDocument = availableDocuments[0];
+    if (!activeDocumentId && !activeSessionId && firstDocument) {
+      setActiveDocumentId(firstDocument._id);
+    }
+  }, [activeDocumentId, activeSessionId, availableDocuments]);
+
+  useEffect(() => {
+    if (sessionDocumentId) {
+      setActiveDocumentId(sessionDocumentId);
+    }
+  }, [sessionDocumentId]);
+
+  useEffect(() => {
+    if (role === 'student' && quotaDocumentId) {
+      void refreshQuota(quotaDocumentId);
+    } else {
+      setQuota(null);
+    }
+  }, [quotaDocumentId, refreshQuota, role]);
+
+  const handleDocumentChange = (documentId: string) => {
+    setActiveDocumentId(documentId);
+    appDispatch({ type: 'SET_ACTIVE_SESSION', payload: null });
+    chatDispatch({ type: 'CLEAR_CHAT' });
+    navigate('/chat');
+  };
+
   const handleSend = async (text: string) => {
-    try {
-      await postMessage(text, activeSubjectId ?? undefined);
-    } catch (err) {
-      console.error('Failed to send message:', err);
+    if (!activeDocumentId) {
+      chatDispatch({ type: 'SET_ERROR', payload: 'Vui lòng chọn tài liệu trước khi đặt câu hỏi.' });
+      return;
+    }
+
+    const nextQuota = await postMessage(text, activeDocumentId);
+    if (nextQuota) {
+      setQuota(nextQuota);
+    } else if (role === 'student' && quotaDocumentId) {
+      await refreshQuota(quotaDocumentId);
     }
   };
 
@@ -75,29 +124,34 @@ const ChatInner: React.FC = () => {
         />
       )}
 
-      {/* Subject selector bar */}
-      {availableSubjects.length > 0 && (
+      {/* Document selector bar */}
+      {availableDocuments.length > 0 && (
         <div className="chat-subject-bar">
-          <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--color-primary)' }}>school</span>
-          <span className="chat-subject-label">Phạm vi kiến thức:</span>
+          <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--color-primary)' }}>description</span>
+          <span className="chat-subject-label">Tài liệu đang hỏi:</span>
           <div className="chat-subject-chips">
-            <button
-              className={`chat-subject-chip ${!activeSubjectId ? 'active' : ''}`}
-              onClick={() => setActiveSubjectId(null)}
-            >
-              Tất cả
-            </button>
-            {availableSubjects.map((s) => (
+            {availableDocuments.map((doc) => (
               <button
-                key={s._id}
-                className={`chat-subject-chip ${activeSubjectId === s._id ? 'active' : ''}`}
-                onClick={() => setActiveSubjectId(s._id)}
+                key={doc._id}
+                className={`chat-subject-chip ${activeDocumentId === doc._id ? 'active' : ''}`}
+                onClick={() => handleDocumentChange(doc._id)}
               >
-                {s.name}
+                Chương {doc.chapter}: {doc.chapterTitle}
               </button>
             ))}
           </div>
         </div>
+      )}
+
+      {availableDocuments.length === 0 && (
+        <div className="chat-subject-bar">
+          <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--color-outline)' }}>info</span>
+          <span className="chat-subject-label">Chưa có tài liệu đã lập chỉ mục để hỏi đáp.</span>
+        </div>
+      )}
+
+      {role === 'student' && (
+        <QuotaIndicator quota={quota} loading={quotaLoading} />
       )}
 
       {/* Message List */}
@@ -111,7 +165,10 @@ const ChatInner: React.FC = () => {
 
       {/* Chat Input */}
       <div className="chat-input-wrapper">
-        <ChatInput onSend={handleSend} disabled={isLoading} />
+        <ChatInput
+          onSend={handleSend}
+          disabled={!activeDocumentId || isLoading || (role === 'student' && quota?.allowed === false)}
+        />
       </div>
 
       <style>{`

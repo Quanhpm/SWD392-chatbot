@@ -1,13 +1,16 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext.js';
 import { useAuth } from '../context/AuthContext.js';
 import { ChatProvider, useChat } from '../context/ChatContext.js';
 import { useChatSession } from '../hooks/useChatSession.js';
 import { getDocuments, getDocumentChunks } from '../services/documentApi.js';
+import { getDocumentQuota } from '../services/subscriptionApi.js';
 import { ChatMessageList } from '../components/chat/ChatMessageList.js';
 import { ChatInput } from '../components/chat/ChatInput.js';
-import type { ISubject, IDocument, IChunk } from '../types/index.js';
+import { QuotaIndicator } from '../components/chat/QuotaIndicator.js';
+import { ErrorToast } from '../components/shared/ErrorToast.js';
+import type { ISubject, IDocument, IChunk, IQuotaStatus } from '../types/index.js';
 
 const studyAssistData: Record<number, {
   takeaways: { concept: string; desc: string; icon: string; color: string }[];
@@ -205,20 +208,16 @@ const loadScript = (src: string): Promise<void> => {
 const StudyPageInner: React.FC = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  const { state: appState } = useApp();
+  const { state: appState, dispatch: appDispatch } = useApp();
   const { state: authState } = useAuth();
   const { dispatch: chatDispatch } = useChat();
 
   const {
-    activeSessionId,
     messages,
     isLoading: isChatLoading,
     error: chatError,
-    loadSessionDetails,
     postMessage,
-    startNewSession,
   } = useChatSession();
 
   // Core Study Page State
@@ -230,6 +229,8 @@ const StudyPageInner: React.FC = () => {
   const [selectedDoc, setSelectedDoc] = useState<IDocument | null>(null);
   const [chunks, setChunks] = useState<IChunk[]>([]);
   const [isLoadingChunks, setIsLoadingChunks] = useState(false);
+  const [quota, setQuota] = useState<IQuotaStatus | null>(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
 
   // AI Study Assist & Reading Modes
   const [viewMode, setViewMode] = useState<'reading' | 'assist'>('reading');
@@ -254,6 +255,19 @@ const StudyPageInner: React.FC = () => {
   const dividerRef = useRef<HTMLDivElement>(null);
   const chatPaneRef = useRef<HTMLDivElement>(null);
 
+  const refreshQuota = useCallback(async (documentId: string) => {
+    if (authState.user?.role !== 'student') return;
+
+    try {
+      setQuotaLoading(true);
+      setQuota(await getDocumentQuota(documentId));
+    } catch (err) {
+      console.error('Failed to load document quota:', err);
+    } finally {
+      setQuotaLoading(false);
+    }
+  }, [authState.user?.role]);
+
   // Fetch subject info & files for this subject
   useEffect(() => {
     const activeSub = appState.subjects.find((s) => s._id === subjectId) as ISubject;
@@ -272,6 +286,8 @@ const StudyPageInner: React.FC = () => {
       navigate('/portal', { replace: true });
       return;
     }
+
+    if (!activeSub) return;
 
     // Load documents for this subject
     const loadDocs = async () => {
@@ -293,21 +309,6 @@ const StudyPageInner: React.FC = () => {
     void loadDocs();
   }, [subjectId, appState.subjects]);
 
-  // Load chat session: Auto start a new session for this course if no session selected
-  useEffect(() => {
-    const initChat = async () => {
-      chatDispatch({ type: 'CLEAR_CHAT' });
-      try {
-        await startNewSession(subjectId, `Hỏi đáp ${subject?.name || 'Môn học'}`);
-      } catch (err) {
-        console.error('Failed to initialize session:', err);
-      }
-    };
-    if (subjectId) {
-      void initChat();
-    }
-  }, [subjectId, subject]);
-
   const selectDocument = async (doc: IDocument) => {
     setSelectedDoc(doc);
     setIsLoadingChunks(true);
@@ -319,6 +320,9 @@ const StudyPageInner: React.FC = () => {
     setShowPdfPreview(false);
     setAssistData(null);
     setAssistError(null);
+    appDispatch({ type: 'SET_ACTIVE_SESSION', payload: null });
+    chatDispatch({ type: 'CLEAR_CHAT' });
+    void refreshQuota(doc._id);
     try {
       const data = await getDocumentChunks(doc._id);
       setChunks(data);
@@ -411,10 +415,16 @@ const StudyPageInner: React.FC = () => {
 
   // Chat message send handler
   const handleSend = async (text: string) => {
-    try {
-      await postMessage(text, subjectId);
-    } catch (err) {
-      console.error('Failed to send message:', err);
+    if (!selectedDoc) {
+      chatDispatch({ type: 'SET_ERROR', payload: 'Vui lòng chọn tài liệu trước khi đặt câu hỏi.' });
+      return;
+    }
+
+    const nextQuota = await postMessage(text, selectedDoc._id);
+    if (nextQuota) {
+      setQuota(nextQuota);
+    } else if (authState.user?.role === 'student') {
+      await refreshQuota(selectedDoc._id);
     }
   };
 
@@ -900,7 +910,9 @@ const StudyPageInner: React.FC = () => {
           <span className="material-symbols-outlined header-icon">psychology</span>
           <div className="header-meta">
             <span className="pane-title">RAG AI Assistant</span>
-            <span className="chat-scope">Phạm vi: {subject?.name}</span>
+            <span className="chat-scope">
+              Tài liệu: {selectedDoc ? `Chương ${selectedDoc.chapter} - ${selectedDoc.chapterTitle}` : 'Chưa chọn'}
+            </span>
           </div>
           <button
             className="toggle-pane-btn flex-center"
@@ -911,6 +923,17 @@ const StudyPageInner: React.FC = () => {
           </button>
         </div>
 
+        {chatError && (
+          <ErrorToast
+            message={chatError}
+            onDismiss={() => chatDispatch({ type: 'SET_ERROR', payload: null })}
+          />
+        )}
+
+        {authState.user?.role === 'student' && (
+          <QuotaIndicator quota={quota} loading={quotaLoading} />
+        )}
+
         <div className="chat-body">
           <ChatMessageList
             messages={messages}
@@ -920,7 +943,10 @@ const StudyPageInner: React.FC = () => {
         </div>
 
         <div className="chat-footer-wrapper">
-          <ChatInput onSend={handleSend} disabled={isChatLoading} />
+          <ChatInput
+            onSend={handleSend}
+            disabled={!selectedDoc || isChatLoading || (authState.user?.role === 'student' && quota?.allowed === false)}
+          />
         </div>
       </aside>
 

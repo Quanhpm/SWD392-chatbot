@@ -20,9 +20,41 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 
 export const documentRoutes = Router();
 
+const resolveDocumentSubjectId = async (document: { subjectId?: unknown; subject: string }): Promise<string | null> => {
+  if (document.subjectId) {
+    return document.subjectId.toString();
+  }
+
+  const subject = await SubjectModel.findOne({ name: document.subject })
+    .select('_id')
+    .lean()
+    .exec();
+  return subject?._id.toString() ?? null;
+};
+
+const verifyDocumentAccess = async (
+  req: Request,
+  document: { subjectId?: unknown; subject: string; uploadedBy?: unknown },
+): Promise<void> => {
+  if (req.user!.role === 'teacher') {
+    if (document.uploadedBy && document.uploadedBy.toString() !== req.user!.id) {
+      throw new AppError('Access denied. You can only access documents you uploaded.', 403);
+    }
+    return;
+  }
+
+  const subjectId = await resolveDocumentSubjectId(document);
+  if (
+    !subjectId ||
+    !req.user!.enrolledSubjects.some((enrolledId) => enrolledId.toString() === subjectId)
+  ) {
+    throw new AppError('Access denied. You are not enrolled in this subject.', 403);
+  }
+};
+
 /**
  * POST /api/documents/upload
- * Teacher only. Multipart form: file + subject + chapter + chapterTitle.
+ * Teacher only. Multipart form: file + subjectId + chapter + chapterTitle.
  * Stores uploadedBy from req.user.id.
  */
 documentRoutes.post(
@@ -44,13 +76,22 @@ documentRoutes.post(
         throw new AppError('Unsupported file type.', 400);
       }
 
+      const subject = await SubjectModel.findById(String(req.body.subjectId)).lean().exec();
+      if (!subject) {
+        throw new AppError('Subject not found.', 404);
+      }
+      if (subject.teacherId.toString() !== req.user!.id) {
+        throw new AppError('Access denied. You can only upload documents to subjects you created.', 403);
+      }
+
       const document = await documentService.createDocument({
         fileName: req.file.filename,
         originalName,
         fileType: fileType as 'pdf' | 'docx' | 'pptx',
         fileSize: req.file.size,
         mimeType: req.file.mimetype,
-        subject: String(req.body.subject),
+        subjectId: subject._id.toString(),
+        subject: subject.name,
         chapter: Number(req.body.chapter),
         chapterTitle: String(req.body.chapterTitle),
         uploadedBy: req.user!.id,
@@ -71,7 +112,7 @@ documentRoutes.post(
 
 /**
  * GET /api/documents
- * Teacher: sees all documents (optionally filtered by ?subject & ?status).
+ * Teacher: sees own uploaded documents (optionally filtered by ?subject & ?status).
  * Student: auto-filtered to enrolled subjects only.
  *          With ?subject filter: 403 if not enrolled in that subject.
  */
@@ -81,10 +122,12 @@ documentRoutes.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       let enrolledSubjectNames: string[] | undefined;
+      let enrolledSubjectIds: string[] | undefined;
 
       if (req.user!.role === 'student') {
+        enrolledSubjectIds = req.user!.enrolledSubjects.map((id) => id.toString());
         if (req.user!.enrolledSubjects.length > 0) {
-          // Resolve ObjectId[] → subject name strings for Chunk/Document metadata matching
+          // Keep subject-name fallback for older documents that predate subjectId.
           const subjects = await SubjectModel.find({
             _id: { $in: req.user!.enrolledSubjects },
           })
@@ -101,6 +144,8 @@ documentRoutes.get(
         subject: typeof req.query.subject === 'string' ? req.query.subject : undefined,
         status: typeof req.query.status === 'string' ? req.query.status : undefined,
         userRole: req.user!.role,
+        uploadedBy: req.user!.role === 'teacher' ? req.user!.id : undefined,
+        enrolledSubjectIds,
         enrolledSubjectNames,
       });
 
@@ -126,20 +171,7 @@ documentRoutes.get(
       const { id } = req.params as { id: string };
       const document = await documentService.getDocumentById(id);
 
-      if (req.user!.role === 'student') {
-        const subject = await SubjectModel.findOne({ name: document.subject })
-          .select('_id')
-          .lean()
-          .exec();
-        if (
-          !subject ||
-          !req.user!.enrolledSubjects.some(
-            (enrolledId) => enrolledId.toString() === subject._id.toString(),
-          )
-        ) {
-          throw new AppError('Access denied. You are not enrolled in this subject.', 403);
-        }
-      }
+      await verifyDocumentAccess(req, document);
 
       res.json({ success: true, document });
     } catch (error) {
@@ -163,20 +195,7 @@ documentRoutes.get(
       const { id } = req.params as { id: string };
       const document = await documentService.getDocumentById(id);
 
-      if (req.user!.role === 'student') {
-        const subject = await SubjectModel.findOne({ name: document.subject })
-          .select('_id')
-          .lean()
-          .exec();
-        if (
-          !subject ||
-          !req.user!.enrolledSubjects.some(
-            (enrolledId) => enrolledId.toString() === subject._id.toString(),
-          )
-        ) {
-          throw new AppError('Access denied. You are not enrolled in this subject.', 403);
-        }
-      }
+      await verifyDocumentAccess(req, document);
 
       const chunks = await ChunkModel.find({ documentId: id })
         .sort({ chunkIndex: 1 })
@@ -206,20 +225,7 @@ documentRoutes.get(
       const { id } = req.params as { id: string };
       const document = await documentService.getDocumentById(id);
 
-      if (req.user!.role === 'student') {
-        const subject = await SubjectModel.findOne({ name: document.subject })
-          .select('_id')
-          .lean()
-          .exec();
-        if (
-          !subject ||
-          !req.user!.enrolledSubjects.some(
-            (enrolledId) => enrolledId.toString() === subject._id.toString(),
-          )
-        ) {
-          throw new AppError('Access denied. You are not enrolled in this subject.', 403);
-        }
-      }
+      await verifyDocumentAccess(req, document);
 
       const filePath = path.resolve(env.uploadDir, document.fileName);
       if (!fs.existsSync(filePath)) {
@@ -253,7 +259,10 @@ documentRoutes.delete(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params as { id: string };
-      const deletedChunks = await documentService.deleteDocument(id);
+      const deletedChunks = await documentService.deleteDocument(id, {
+        role: req.user!.role,
+        userId: req.user!.id,
+      });
       res.json({ success: true, message: `Document and ${deletedChunks} chunks deleted` });
     } catch (error) {
       next(error);
@@ -274,22 +283,8 @@ documentRoutes.get(
     try {
       const { id } = req.params as { id: string };
 
-      // Student subject access validation
-      if (req.user!.role === 'student') {
-        const document = await documentService.getDocumentById(id);
-        const subject = await SubjectModel.findOne({ name: document.subject })
-          .select('_id')
-          .lean()
-          .exec();
-        if (
-          !subject ||
-          !req.user!.enrolledSubjects.some(
-            (enrolledId) => enrolledId.toString() === subject._id.toString(),
-          )
-        ) {
-          throw new AppError('Access denied. You are not enrolled in this subject.', 403);
-        }
-      }
+      const document = await documentService.getDocumentById(id);
+      await verifyDocumentAccess(req, document);
 
       const assistData = await documentService.getDocumentAssist(id);
       res.json({
@@ -316,22 +311,8 @@ documentRoutes.post(
     try {
       const { id } = req.params as { id: string };
 
-      // Student subject access validation
-      if (req.user!.role === 'student') {
-        const document = await documentService.getDocumentById(id);
-        const subject = await SubjectModel.findOne({ name: document.subject })
-          .select('_id')
-          .lean()
-          .exec();
-        if (
-          !subject ||
-          !req.user!.enrolledSubjects.some(
-            (enrolledId) => enrolledId.toString() === subject._id.toString(),
-          )
-        ) {
-          throw new AppError('Access denied. You are not enrolled in this subject.', 403);
-        }
-      }
+      const document = await documentService.getDocumentById(id);
+      await verifyDocumentAccess(req, document);
 
       const assistData = await documentService.generateDocumentAssist(id);
       res.json({

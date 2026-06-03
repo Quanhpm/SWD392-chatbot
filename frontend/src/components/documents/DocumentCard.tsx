@@ -6,9 +6,10 @@ import { Icon } from '../shared/Icon.js';
 interface DocumentCardProps {
   document: IDocument;
   onDelete: (id: string) => void;
+  canManage?: boolean;
 }
 
-export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete }) => {
+export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, canManage = true }) => {
   const getDocIcon = (type: string) => {
     if (type === 'pdf') return 'picture_as_pdf';
     if (type === 'docx') return 'description';
@@ -86,19 +87,21 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete }
       </td>
 
       {/* Actions */}
-      <td className="doc-actions-cell">
-        {!isTerminal ? (
-          <span className="loading-dots">⏳</span>
-        ) : (
-          <button
-            className="delete-card-btn flex-center"
-            onClick={() => onDelete(document._id)}
-            aria-label="Delete source"
-          >
-            <Icon name="delete" />
-          </button>
-        )}
-      </td>
+      {canManage && (
+        <td className="doc-actions-cell">
+          {!isTerminal ? (
+            <span className="loading-dots">⏳</span>
+          ) : (
+            <button
+              className="delete-card-btn flex-center"
+              onClick={() => onDelete(document._id)}
+              aria-label="Delete source"
+            >
+              <Icon name="delete" />
+            </button>
+          )}
+        </td>
+      )}
 
       <style>{`
         .document-card-row {

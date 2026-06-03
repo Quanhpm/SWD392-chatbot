@@ -3,7 +3,7 @@ import type { IDocument, IChunk } from '../types/index.js';
 
 export interface UploadParams {
   file: File;
-  subject: string;
+  subjectId: string;
   chapter: number;
   chapterTitle: string;
 }
@@ -17,7 +17,7 @@ export const uploadDocument = async (
 ): Promise<IDocument> => {
   const formData = new FormData();
   formData.append('file', params.file);
-  formData.append('subject', params.subject);
+  formData.append('subjectId', params.subjectId);
   formData.append('chapter', String(params.chapter));
   formData.append('chapterTitle', params.chapterTitle);
 
@@ -64,4 +64,3 @@ export const getDocumentChunks = async (id: string): Promise<IChunk[]> => {
   const response = await api.get<{ success: boolean; chunks: IChunk[] }>(`/documents/${id}/chunks`);
   return response.data.chunks;
 };
-

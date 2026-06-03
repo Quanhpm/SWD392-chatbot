@@ -53,6 +53,4 @@ const documentAssistSchema = new Schema<IDocumentAssist>(
   },
 );
 
-documentAssistSchema.index({ documentId: 1 });
-
 export const DocumentAssistModel = model<IDocumentAssist>('DocumentAssist', documentAssistSchema);

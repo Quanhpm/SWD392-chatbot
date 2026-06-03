@@ -18,15 +18,15 @@ export const subjectRoutes = Router();
 
 /**
  * GET /api/subjects
- * Requires authentication. Both teachers and students can list subjects.
+ * Requires authentication. Teachers list their own subjects; students list all joinable subjects.
  * Password hash is never returned.
  */
 subjectRoutes.get(
   '/',
   requireAuth,
-  async (_req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const subjects = await listSubjects();
+      const subjects = await listSubjects(req.user!.role, req.user!.id);
       res.json({ success: true, subjects });
     } catch (error) {
       next(error);
@@ -99,7 +99,7 @@ subjectRoutes.delete(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params as { id: string };
-      await deleteSubject(id);
+      await deleteSubject(id, req.user!.id);
       res.json({ success: true, message: 'Subject deleted.' });
     } catch (error) {
       next(error);

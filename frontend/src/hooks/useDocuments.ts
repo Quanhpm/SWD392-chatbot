@@ -53,7 +53,7 @@ export const useDocuments = () => {
 
   const uploadFile = async (
     file: File,
-    subject: string,
+    subjectId: string,
     chapter: number,
     chapterTitle: string,
     onProgress?: (progress: number) => void
@@ -61,7 +61,7 @@ export const useDocuments = () => {
     setError(null);
     try {
       const doc = await docApi.uploadDocument(
-        { file, subject, chapter, chapterTitle },
+        { file, subjectId, chapter, chapterTitle },
         (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);

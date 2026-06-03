@@ -1,152 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="980" viewBox="0 0 1500 980" role="img" aria-labelledby="title desc">
-  <title id="title">SE1939 RAG Chatbot Use Case Diagram</title>
-  <desc id="desc">Use case diagram for document management, chat retrieval, and evaluation features.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="420" viewBox="0 0 960 420" role="img" aria-labelledby="title desc">
+  <title id="title">Smart RAG Learning Platform Use Case Summary</title>
+  <desc id="desc">Current Teacher and Student use-case summary. Render docs/use-case-diagram.puml for the full editable diagram.</desc>
+  <style>
+    .bg { fill: #f7fafd; }
+    .card { fill: #ffffff; stroke: #727785; stroke-width: 1.5; rx: 18; }
+    .title { font: 700 26px Arial, sans-serif; fill: #123047; }
+    .subtitle { font: 15px Arial, sans-serif; fill: #414754; }
+    .actor { font: 700 18px Arial, sans-serif; fill: #006a61; }
+    .text { font: 14px Arial, sans-serif; fill: #243447; }
+    .rule { font: 700 15px Arial, sans-serif; fill: #9a3412; }
+    .arrow { stroke: #414754; stroke-width: 2; marker-end: url(#arrow); }
+  </style>
   <defs>
-    <style>
-      .bg { fill: #f7fafd; }
-      .boundary { fill: #ffffff; stroke: #8d95aa; stroke-width: 2; rx: 18; }
-      .pkg { fill: #f1f4f7; stroke: #c1c6d6; stroke-width: 1.5; rx: 14; }
-      .pkg-title { fill: #181c1f; font: 600 18px Inter, Arial, sans-serif; }
-      .text { fill: #181c1f; font: 500 15px Inter, Arial, sans-serif; text-anchor: middle; }
-      .small { fill: #414754; font: 500 12px Inter, Arial, sans-serif; text-anchor: middle; }
-      .actor-label { fill: #181c1f; font: 600 16px Inter, Arial, sans-serif; text-anchor: middle; }
-      .usecase { fill: #f7fafd; stroke: #005bbf; stroke-width: 2; }
-      .external { fill: #fff7e0; stroke: #b26a00; stroke-width: 2; }
-      .line { stroke: #414754; stroke-width: 1.8; fill: none; }
-      .dashed { stroke: #687083; stroke-width: 1.5; stroke-dasharray: 7 6; fill: none; marker-end: url(#arrow); }
-      .note { fill: #fff; stroke: #c1c6d6; stroke-width: 1.4; rx: 8; }
-    </style>
-    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-      <path d="M0,0 L10,4 L0,8 Z" fill="#687083"/>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#414754"/>
     </marker>
   </defs>
+  <rect class="bg" width="960" height="420"/>
+  <text class="title" x="40" y="48">Smart RAG Learning Platform</text>
+  <text class="subtitle" x="40" y="76">Use-case source of truth: docs/use-case-diagram.puml</text>
 
-  <rect class="bg" width="1500" height="980"/>
-  <text x="750" y="44" fill="#181c1f" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700" text-anchor="middle">SE1939 RAG Chatbot - Use Case Diagram</text>
+  <rect class="card" x="40" y="120" width="250" height="180"/>
+  <text class="actor" x="65" y="155">Teacher</text>
+  <text class="text" x="65" y="190">• Create own subjects</text>
+  <text class="text" x="65" y="218">• Upload own documents</text>
+  <text class="text" x="65" y="246">• Delete owned content</text>
+  <text class="text" x="65" y="274">• Approve paid upgrades</text>
 
-  <rect class="boundary" x="260" y="86" width="950" height="820"/>
-  <text x="735" y="122" fill="#181c1f" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle">System Boundary</text>
+  <rect class="card" x="345" y="120" width="270" height="180"/>
+  <text class="actor" x="370" y="155">Student</text>
+  <text class="text" x="370" y="190">• Enroll with subject password</text>
+  <text class="text" x="370" y="218">• Read enrolled documents</text>
+  <text class="text" x="370" y="246">• Chat inside one document</text>
+  <text class="text" x="370" y="274">• Request subscription upgrade</text>
 
-  <!-- Actors -->
-  <g transform="translate(105 320)">
-    <circle cx="0" cy="-58" r="18" fill="#d8e2ff" stroke="#005bbf" stroke-width="2"/>
-    <line class="line" x1="0" y1="-40" x2="0" y2="20"/>
-    <line class="line" x1="-35" y1="-18" x2="35" y2="-18"/>
-    <line class="line" x1="0" y1="20" x2="-32" y2="68"/>
-    <line class="line" x1="0" y1="20" x2="32" y2="68"/>
-    <text class="actor-label" x="0" y="103">User</text>
-    <text class="small" x="0" y="121">Student / Instructor</text>
-  </g>
+  <rect class="card" x="670" y="120" width="250" height="180"/>
+  <text class="actor" x="695" y="155">Core Rule</text>
+  <text class="rule" x="695" y="190">5 free questions</text>
+  <text class="text" x="695" y="218">per student per document</text>
+  <text class="text" x="695" y="246">Question #6 requires</text>
+  <text class="text" x="695" y="274">an upgraded plan</text>
 
-  <g transform="translate(1370 310)">
-    <circle cx="0" cy="-58" r="18" fill="#fff7e0" stroke="#b26a00" stroke-width="2"/>
-    <line class="line" x1="0" y1="-40" x2="0" y2="20"/>
-    <line class="line" x1="-35" y1="-18" x2="35" y2="-18"/>
-    <line class="line" x1="0" y1="20" x2="-32" y2="68"/>
-    <line class="line" x1="0" y1="20" x2="32" y2="68"/>
-    <text class="actor-label" x="0" y="103">Gemini API</text>
-  </g>
-
-  <g transform="translate(1370 690)">
-    <ellipse cx="0" cy="-42" rx="52" ry="18" fill="#fff7e0" stroke="#b26a00" stroke-width="2"/>
-    <path d="M-52,-42 L-52,42 C-52,66 52,66 52,42 L52,-42" fill="#fff7e0" stroke="#b26a00" stroke-width="2"/>
-    <ellipse cx="0" cy="42" rx="52" ry="18" fill="none" stroke="#b26a00" stroke-width="2"/>
-    <text class="actor-label" x="0" y="95">MongoDB</text>
-  </g>
-
-  <!-- Packages -->
-  <rect class="pkg" x="310" y="155" width="830" height="245"/>
-  <text class="pkg-title" x="335" y="185">Document Management</text>
-
-  <rect class="pkg" x="310" y="430" width="830" height="270"/>
-  <text class="pkg-title" x="335" y="460">Chat and Retrieval</text>
-
-  <rect class="pkg" x="310" y="730" width="830" height="135"/>
-  <text class="pkg-title" x="335" y="760">Evaluation</text>
-
-  <!-- Document use cases -->
-  <ellipse class="usecase" cx="455" cy="235" rx="118" ry="34"/>
-  <text class="text" x="455" y="231">Upload course</text><text class="text" x="455" y="250">material</text>
-
-  <ellipse class="usecase" cx="710" cy="230" rx="110" ry="34"/>
-  <text class="text" x="710" y="226">Parse, chunk,</text><text class="text" x="710" y="245">embed document</text>
-
-  <ellipse class="usecase" cx="960" cy="230" rx="118" ry="34"/>
-  <text class="text" x="960" y="226">Store document</text><text class="text" x="960" y="245">and chunks</text>
-
-  <ellipse class="usecase" cx="455" cy="330" rx="118" ry="34"/>
-  <text class="text" x="455" y="326">View document</text><text class="text" x="455" y="345">vault</text>
-
-  <ellipse class="usecase" cx="710" cy="330" rx="118" ry="34"/>
-  <text class="text" x="710" y="326">Search / filter</text><text class="text" x="710" y="345">documents</text>
-
-  <ellipse class="usecase" cx="960" cy="330" rx="118" ry="34"/>
-  <text class="text" x="960" y="326">Delete document</text><text class="text" x="960" y="345">and chunks</text>
-
-  <!-- Chat use cases -->
-  <ellipse class="usecase" cx="455" cy="510" rx="118" ry="34"/>
-  <text class="text" x="455" y="506">Start chat</text><text class="text" x="455" y="525">session</text>
-
-  <ellipse class="usecase" cx="710" cy="510" rx="116" ry="34"/>
-  <text class="text" x="710" y="515">Ask question</text>
-
-  <ellipse class="usecase" cx="960" cy="510" rx="118" ry="34"/>
-  <text class="text" x="960" y="506">Retrieve relevant</text><text class="text" x="960" y="525">chunks</text>
-
-  <ellipse class="usecase" cx="455" cy="615" rx="118" ry="34"/>
-  <text class="text" x="455" y="611">Manage chat</text><text class="text" x="455" y="630">history</text>
-
-  <ellipse class="usecase" cx="710" cy="615" rx="132" ry="34"/>
-  <text class="text" x="710" y="611">Generate answer</text><text class="text" x="710" y="630">with citations</text>
-
-  <ellipse class="usecase" cx="975" cy="615" rx="132" ry="34"/>
-  <text class="text" x="975" y="611">Generate general</text><text class="text" x="975" y="630">answer</text>
-
-  <!-- Evaluation use cases -->
-  <ellipse class="usecase" cx="455" cy="810" rx="126" ry="34"/>
-  <text class="text" x="455" y="806">View evaluation</text><text class="text" x="455" y="825">test set</text>
-
-  <ellipse class="usecase" cx="710" cy="810" rx="126" ry="34"/>
-  <text class="text" x="710" y="806">View statistics</text><text class="text" x="710" y="825">and details</text>
-
-  <!-- User associations -->
-  <path class="line" d="M155 282 L337 235"/>
-  <path class="line" d="M155 315 L337 330"/>
-  <path class="line" d="M155 345 L337 510"/>
-  <path class="line" d="M155 380 L337 615"/>
-  <path class="line" d="M155 420 L337 810"/>
-
-  <!-- Include/extend flows -->
-  <path class="dashed" d="M573 235 L600 230"/>
-  <text class="small" x="588" y="218">&lt;&lt;include&gt;&gt;</text>
-  <path class="dashed" d="M820 230 L842 230"/>
-  <text class="small" x="832" y="218">&lt;&lt;include&gt;&gt;</text>
-  <path class="dashed" d="M826 510 L842 510"/>
-  <text class="small" x="835" y="498">&lt;&lt;include&gt;&gt;</text>
-  <path class="dashed" d="M916 545 L808 590"/>
-  <text class="small" x="850" y="555">&lt;&lt;extend&gt;&gt;</text>
-  <path class="dashed" d="M960 545 L975 581"/>
-  <text class="small" x="1003" y="565">&lt;&lt;extend&gt;&gt;</text>
-  <path class="dashed" d="M581 810 L584 810"/>
-  <text class="small" x="585" y="798">&lt;&lt;include&gt;&gt;</text>
-
-  <!-- External system associations -->
-  <path class="line" d="M1318 300 L1078 230"/>
-  <path class="line" d="M1318 335 L842 615"/>
-  <path class="line" d="M1320 360 L1107 615"/>
-  <path class="line" d="M1318 675 L1078 230"/>
-  <path class="line" d="M1318 700 L1078 510"/>
-  <path class="line" d="M1318 725 L573 615"/>
-  <path class="line" d="M1318 750 L1078 330"/>
-
-  <!-- Notes -->
-  <rect class="note" x="1185" y="455" width="250" height="84"/>
-  <text x="1310" y="482" class="small">Answer from context</text>
-  <text x="1310" y="502" class="small">uses retrieved chunks</text>
-  <text x="1310" y="522" class="small">and returns citations.</text>
-
-  <rect class="note" x="1185" y="560" width="250" height="92"/>
-  <text x="1310" y="586" class="small">General answer is used</text>
-  <text x="1310" y="606" class="small">when no context matches</text>
-  <text x="1310" y="626" class="small">and ALLOW_GENERAL_QUESTIONS=true.</text>
+  <line class="arrow" x1="290" y1="210" x2="345" y2="210"/>
+  <line class="arrow" x1="615" y1="210" x2="670" y2="210"/>
+  <text class="subtitle" x="40" y="360">Gemini generates embeddings, study assist, and answers. MongoDB stores users, subjects, documents, chunks, chat sessions, subscriptions, and quotas.</text>
 </svg>

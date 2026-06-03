@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.js';
+import { useAuth } from '../context/AuthContext.js';
 import { createSubject as apiCreateSubject, deleteSubject as apiDeleteSubject } from '../services/subjectApi.js';
 import { DocumentList } from '../components/documents/DocumentList.js';
 import { Icon } from '../components/shared/Icon.js';
@@ -7,7 +8,12 @@ import { Button } from '../components/shared/Button.js';
 
 export const DocumentsPage: React.FC = () => {
   const { state, dispatch } = useApp();
-  const subjects = state.subjects;
+  const { state: authState } = useAuth();
+  const isTeacher = authState.user?.role === 'teacher';
+  const enrolledIds = new Set(authState.user?.enrolledSubjects ?? []);
+  const subjects = isTeacher
+    ? state.subjects
+    : state.subjects.filter((subject) => enrolledIds.has(subject._id));
   const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const [showNewSubject, setShowNewSubject] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
@@ -48,8 +54,9 @@ export const DocumentsPage: React.FC = () => {
       <div className="page-header">
         <h1 className="page-title">Course Documents</h1>
         <p className="page-subtitle">
-          Upload and manage your syllabus, textbooks, course slides, and reference materials.
-          Indexed files are parsed into vector embeddings and made immediately searchable by the chatbot.
+          {isTeacher
+            ? 'Upload and manage your syllabus, textbooks, course slides, and reference materials. Indexed files are parsed into vector embeddings and made immediately searchable by the chatbot.'
+            : 'Browse indexed learning materials from the subjects you have joined. Use them for reading and document-scoped RAG chat.'}
         </p>
       </div>
 
@@ -74,16 +81,18 @@ export const DocumentsPage: React.FC = () => {
                 {state.documents.filter((d) => d.subject === s.name).length}
               </span>
             </button>
-            <button
-              className="chip-delete-btn"
-              onClick={(e) => { e.stopPropagation(); handleDeleteSubject(s._id, s.name); }}
-              title="Delete subject"
-            >
-              <Icon name="close" style={{ fontSize: '14px' }} />
-            </button>
+            {isTeacher && (
+              <button
+                className="chip-delete-btn"
+                onClick={(e) => { e.stopPropagation(); handleDeleteSubject(s._id, s.name); }}
+                title="Delete subject"
+              >
+                <Icon name="close" style={{ fontSize: '14px' }} />
+              </button>
+            )}
           </div>
         ))}
-        {showNewSubject ? (
+        {isTeacher && (showNewSubject ? (
           <div className="inline-new-subject fade-in">
               <input
                 type="text"
@@ -109,17 +118,17 @@ export const DocumentsPage: React.FC = () => {
               <button className="chip-cancel-btn" onClick={() => { setShowNewSubject(false); setNewSubjectName(''); setNewSubjectPassword(''); }}>
                 <Icon name="close" style={{ fontSize: '16px' }} />
               </button>
-            </div>
+          </div>
         ) : (
           <button className="subject-chip add-chip" onClick={() => setShowNewSubject(true)}>
             <Icon name="add" style={{ fontSize: '16px' }} />
             New Subject
           </button>
-        )}
+        ))}
       </div>
 
       <div className="page-content-card">
-        <DocumentList subjectFilter={activeSubject ?? undefined} />
+        <DocumentList subjectFilter={activeSubject ?? undefined} canManage={isTeacher} />
       </div>
 
       <style>{`

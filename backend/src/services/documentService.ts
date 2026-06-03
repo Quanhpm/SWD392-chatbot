@@ -5,8 +5,10 @@ import { Types } from 'mongoose';
 
 import { env } from '../config/environment.js';
 import { ChunkModel } from '../models/Chunk.js';
+import { ChatSessionModel } from '../models/ChatSession.js';
 import { DocumentModel, type IDocument } from '../models/Document.js';
 import { DocumentAssistModel, type IDocumentAssist } from '../models/DocumentAssist.js';
+import { QuestionQuotaModel } from '../models/QuestionQuota.js';
 import type { ILLMPort } from '../ports/ILLMPort.js';
 import type { FileType } from '../types/index.js';
 import { logger } from '../utils/logger.js';
@@ -21,6 +23,7 @@ export interface CreateDocumentInput {
   fileType: FileType;
   fileSize: number;
   mimeType: string;
+  subjectId: string;
   subject: string;
   chapter: number;
   chapterTitle: string;
@@ -61,7 +64,7 @@ export class DocumentService {
 
   /**
    * Lists documents with role-based access control:
-   * - Teacher: sees all documents (optionally filtered by subject/status)
+   * - Teacher: sees own uploaded documents (optionally filtered by subject/status)
    * - Student: sees only documents from enrolled subjects
    *   - With ?subject filter: 403 if not enrolled in that subject
    *   - Without ?subject filter: auto-filters to enrolled subjects only
@@ -70,9 +73,15 @@ export class DocumentService {
     subject?: string;
     status?: string;
     userRole?: 'teacher' | 'student';
+    uploadedBy?: string;
+    enrolledSubjectIds?: string[];
     enrolledSubjectNames?: string[];
   }): Promise<IDocument[]> {
     const query: Record<string, unknown> = {};
+
+    if (filters.userRole === 'teacher' && filters.uploadedBy) {
+      query.uploadedBy = filters.uploadedBy;
+    }
 
     if (filters.subject) {
       if (
@@ -85,10 +94,14 @@ export class DocumentService {
       query.subject = filters.subject;
     } else if (
       filters.userRole === 'student' &&
+      filters.enrolledSubjectIds !== undefined &&
       filters.enrolledSubjectNames !== undefined
     ) {
       // Auto-filter to enrolled subjects only (empty array → no results)
-      query.subject = { $in: filters.enrolledSubjectNames };
+      query.$or = [
+        { subjectId: { $in: filters.enrolledSubjectIds } },
+        { subject: { $in: filters.enrolledSubjectNames } },
+      ];
     }
 
     if (
@@ -111,13 +124,21 @@ export class DocumentService {
   }
 
   /** Deletes a document, associated chunks, and any leftover upload file. */
-  async deleteDocument(id: string): Promise<number> {
+  async deleteDocument(id: string, actor?: { role: 'teacher' | 'student'; userId: string }): Promise<number> {
     const document = await DocumentModel.findById(id).exec();
     if (!document) {
       throw new AppError('Document not found', 404);
     }
+    if (actor?.role === 'teacher' && document.uploadedBy.toString() !== actor.userId) {
+      throw new AppError('Access denied. You can only delete documents you uploaded.', 403);
+    }
 
-    const deleteResult = await ChunkModel.deleteMany({ documentId: document._id }).exec();
+    const [deleteResult] = await Promise.all([
+      ChunkModel.deleteMany({ documentId: document._id }).exec(),
+      DocumentAssistModel.deleteOne({ documentId: document._id }).exec(),
+      ChatSessionModel.deleteMany({ documentId: document._id }).exec(),
+      QuestionQuotaModel.deleteMany({ documentId: document._id }).exec(),
+    ]);
     await deleteFileIfExists(filePathForDocument(document));
     await document.deleteOne();
     return deleteResult.deletedCount;

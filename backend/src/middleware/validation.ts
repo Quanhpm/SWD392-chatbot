@@ -4,18 +4,18 @@ import { body, param, validationResult } from 'express-validator';
 // ─── Existing Validators ─────────────────────────────────────────────────────
 
 export const uploadDocumentValidators = [
-  body('subject').trim().notEmpty().withMessage('Subject is required.'),
+  body('subjectId').isMongoId().withMessage('A valid subjectId is required.'),
   body('chapter').isInt({ min: 0 }).withMessage('Chapter must be a non-negative integer.'),
   body('chapterTitle').trim().notEmpty().withMessage('Chapter title is required.'),
 ];
 
-/** @deprecated Use createSessionWithSubjectValidators for new code */
+/** @deprecated Use createSessionWithDocumentValidators for new code */
 export const createSessionValidators = [
   body('title').optional().trim().isLength({ min: 1, max: 120 }).withMessage('Title must be 1-120 characters.'),
 ];
 
-export const createSessionWithSubjectValidators = [
-  body('subjectId').isMongoId().withMessage('A valid subjectId (MongoDB ObjectId) is required.'),
+export const createSessionWithDocumentValidators = [
+  body('documentId').isMongoId().withMessage('A valid documentId (MongoDB ObjectId) is required.'),
   body('title')
     .optional()
     .trim()

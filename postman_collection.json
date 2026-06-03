@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "d88b4887-a2f2-4c28-98f3-e5783359d9c7",
     "name": "Smart RAG Learning Platform API",
-    "description": "Comprehensive Postman collection for testing the RAG chatbot secure endpoints, roles, and subject-scoped boundary guards.",
+    "description": "Comprehensive Postman collection for testing the RAG chatbot secure endpoints, roles, and document-scoped boundary guards.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -318,8 +318,8 @@
                   "src": ""
                 },
                 {
-                  "key": "subject",
-                  "value": "SWD391 Enterprise Architecture",
+                  "key": "subjectId",
+                  "value": "{{subject_id}}",
                   "type": "text"
                 },
                 {
@@ -450,7 +450,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"subjectId\": \"{{subject_id}}\",\n  \"title\": \"Security Systems Study Session\"\n}"
+              "raw": "{\n  \"documentId\": \"{{document_id}}\",\n  \"title\": \"Document Study Session\"\n}"
             },
             "url": {
               "raw": "{{base_url}}/chat/sessions",

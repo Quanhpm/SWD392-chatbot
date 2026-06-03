@@ -9,96 +9,104 @@ skinparam usecase {
   ArrowColor #414754
 }
 
-actor "User\n(Student / Instructor)" as User
+actor "Teacher" as Teacher
+actor "Student" as Student
 actor "Gemini API" as Gemini
 database "MongoDB" as Mongo
 
-rectangle "SE1939 RAG Chatbot System" {
-  package "Document Management" {
-    usecase "Upload course material" as UC_Upload
-    usecase "Enter document metadata" as UC_Metadata
-    usecase "Validate file type and size" as UC_Validate
+rectangle "Smart RAG Learning Platform" {
+  package "Subject and Document Management" {
+    usecase "Create subject" as UC_CreateSubject
+    usecase "Share subject password" as UC_SharePassword
+    usecase "Upload document" as UC_UploadDocument
+    usecase "Enter subject/chapter metadata" as UC_Metadata
+    usecase "Delete own document" as UC_DeleteDocument
+    usecase "Delete own subject" as UC_DeleteSubject
     usecase "Parse document text" as UC_Parse
     usecase "Split text into chunks" as UC_Chunk
     usecase "Generate embeddings" as UC_Embed
     usecase "Store document and chunks" as UC_StoreDoc
-    usecase "View document vault" as UC_ViewDocs
-    usecase "Search / filter documents" as UC_SearchDocs
-    usecase "Delete document" as UC_DeleteDoc
-    usecase "Delete related chunks" as UC_DeleteChunks
   }
 
-  package "Chat and Retrieval" {
-    usecase "Start chat session" as UC_StartChat
-    usecase "Ask a question" as UC_Ask
-    usecase "Generate query embedding" as UC_QueryEmbed
-    usecase "Retrieve relevant chunks" as UC_Retrieve
-    usecase "Generate answer from course context" as UC_ContextAnswer
-    usecase "Generate general answer" as UC_GeneralAnswer
-    usecase "Show citations" as UC_Citations
+  package "Learning" {
+    usecase "View joinable subjects" as UC_ViewSubjects
+    usecase "Enroll in subject" as UC_Enroll
+    usecase "Read enrolled documents" as UC_ReadDocs
+    usecase "View study assist" as UC_Assist
+    usecase "Generate study assist" as UC_GenerateAssist
+  }
+
+  package "Document-scoped Chat" {
+    usecase "Select document" as UC_SelectDocument
+    usecase "Start document chat session" as UC_StartChat
+    usecase "Ask question" as UC_Ask
+    usecase "Check document quota" as UC_CheckQuota
+    usecase "Retrieve chunks from selected document" as UC_Retrieve
+    usecase "Generate answer with citations" as UC_Answer
     usecase "Save chat history" as UC_SaveChat
-    usecase "View chat history" as UC_ViewChat
-    usecase "Delete chat session" as UC_DeleteChat
   }
 
-  package "Evaluation" {
-    usecase "View evaluation test set" as UC_TestSet
-    usecase "View test statistics" as UC_TestStats
-    usecase "Expand question details" as UC_TestDetail
+  package "Subscription" {
+    usecase "View plans" as UC_ViewPlans
+    usecase "Request upgrade" as UC_RequestUpgrade
+    usecase "Approve/reject upgrade" as UC_ApproveUpgrade
+    usecase "Reset quota window" as UC_ResetQuota
   }
 }
 
-User --> UC_Upload
-User --> UC_ViewDocs
-User --> UC_SearchDocs
-User --> UC_DeleteDoc
-User --> UC_StartChat
-User --> UC_Ask
-User --> UC_ViewChat
-User --> UC_DeleteChat
-User --> UC_TestSet
+Teacher --> UC_CreateSubject
+Teacher --> UC_SharePassword
+Teacher --> UC_UploadDocument
+Teacher --> UC_DeleteDocument
+Teacher --> UC_DeleteSubject
+Teacher --> UC_ApproveUpgrade
 
-UC_Upload .> UC_Metadata : <<include>>
-UC_Upload .> UC_Validate : <<include>>
-UC_Upload .> UC_Parse : <<include>>
-UC_Upload .> UC_Chunk : <<include>>
-UC_Upload .> UC_Embed : <<include>>
-UC_Upload .> UC_StoreDoc : <<include>>
+Student --> UC_ViewSubjects
+Student --> UC_Enroll
+Student --> UC_ReadDocs
+Student --> UC_Assist
+Student --> UC_SelectDocument
+Student --> UC_StartChat
+Student --> UC_Ask
+Student --> UC_ViewPlans
+Student --> UC_RequestUpgrade
 
-UC_DeleteDoc .> UC_DeleteChunks : <<include>>
+UC_UploadDocument .> UC_Metadata : <<include>>
+UC_UploadDocument .> UC_Parse : <<include>>
+UC_UploadDocument .> UC_Chunk : <<include>>
+UC_UploadDocument .> UC_Embed : <<include>>
+UC_UploadDocument .> UC_StoreDoc : <<include>>
 
-UC_Ask .> UC_QueryEmbed : <<include>>
+UC_Assist .> UC_GenerateAssist : <<extend>>
+UC_StartChat .> UC_SelectDocument : <<include>>
+UC_Ask .> UC_CheckQuota : <<include>>
 UC_Ask .> UC_Retrieve : <<include>>
+UC_Ask .> UC_Answer : <<include>>
 UC_Ask .> UC_SaveChat : <<include>>
-UC_ContextAnswer .> UC_Citations : <<include>>
-UC_ContextAnswer .> UC_Ask : <<extend>>
-UC_GeneralAnswer .> UC_Ask : <<extend>>
-
-UC_TestSet .> UC_TestStats : <<include>>
-UC_TestSet .> UC_TestDetail : <<extend>>
+UC_ApproveUpgrade .> UC_ResetQuota : <<include>>
 
 Gemini --> UC_Embed
-Gemini --> UC_QueryEmbed
-Gemini --> UC_ContextAnswer
-Gemini --> UC_GeneralAnswer
+Gemini --> UC_GenerateAssist
+Gemini --> UC_Answer
 
 Mongo --> UC_StoreDoc
+Mongo --> UC_ReadDocs
 Mongo --> UC_Retrieve
 Mongo --> UC_SaveChat
-Mongo --> UC_ViewDocs
-Mongo --> UC_ViewChat
-Mongo --> UC_DeleteDoc
-Mongo --> UC_DeleteChat
+Mongo --> UC_CheckQuota
+Mongo --> UC_ResetQuota
 
-note right of UC_ContextAnswer
-Used when retrieved chunks
-match the user question.
-Answer includes citations.
+note right of UC_CheckQuota
+Free plan allows 5 questions
+per student per document.
+The 6th question in the same
+document requires an upgrade.
 end note
 
-note right of UC_GeneralAnswer
-Used when ALLOW_GENERAL_QUESTIONS=true
-and no relevant course context is found.
+note right of UC_Retrieve
+Retrieval is restricted to the
+selected document to prevent
+cross-document leakage.
 end note
 
 @enduml

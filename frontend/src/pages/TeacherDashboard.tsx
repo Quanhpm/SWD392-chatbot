@@ -1,16 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext.js';
 import { useApp } from '../context/AppContext.js';
 import { createSubject, deleteSubject } from '../services/subjectApi.js';
-import { getDocuments } from '../services/documentApi.js';
 import type { ISubject, IDocument } from '../types/index.js';
-import { UploadModal } from '../components/documents/UploadModal.js';
 
 export const TeacherDashboard: React.FC = () => {
-  const { state: authState, logout } = useAuth();
-  const { state: appState, dispatch, refreshSubjects, refreshDocuments } = useApp();
-  const navigate = useNavigate();
+  const { state: authState } = useAuth();
+  const { state: appState, dispatch, refreshSubjects } = useApp();
 
   const [showCreateSubject, setShowCreateSubject] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
@@ -18,7 +14,6 @@ export const TeacherDashboard: React.FC = () => {
   const [newSubjectDesc, setNewSubjectDesc] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
-  const [showUpload, setShowUpload] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const subjects = appState.subjects as ISubject[];
@@ -109,7 +104,11 @@ export const TeacherDashboard: React.FC = () => {
               <span className="material-symbols-outlined">add</span>
               Tạo Môn học
             </button>
-            <button className="btn-outline" style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }} onClick={() => setShowUpload(true)}>
+            <button
+              className="btn-outline"
+              style={{ background: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.4)', color: 'white' }}
+              onClick={() => dispatch({ type: 'SET_UPLOAD_MODAL', payload: true })}
+            >
               <span className="material-symbols-outlined">upload_file</span>
               Tải tài liệu
             </button>
@@ -220,7 +219,7 @@ export const TeacherDashboard: React.FC = () => {
               <span className="material-symbols-outlined">description</span>
               Tài liệu học tập
             </h2>
-            <button className="btn-ghost" onClick={() => setShowUpload(true)}>
+              <button className="btn-ghost" onClick={() => dispatch({ type: 'SET_UPLOAD_MODAL', payload: true })}>
               <span className="material-symbols-outlined">upload_file</span>
               Tải lên
             </button>
@@ -229,7 +228,7 @@ export const TeacherDashboard: React.FC = () => {
             <div className="panel-empty">
               <span className="material-symbols-outlined" style={{ fontSize: 48, color: 'var(--color-outline)' }}>description</span>
               <p>Chưa có tài liệu. Hãy tải lên tài liệu đầu tiên!</p>
-              <button className="btn-primary" onClick={() => setShowUpload(true)}>Tải tài liệu</button>
+              <button className="btn-primary" onClick={() => dispatch({ type: 'SET_UPLOAD_MODAL', payload: true })}>Tải tài liệu</button>
             </div>
           ) : (
             <div className="docs-list">
@@ -339,8 +338,6 @@ export const TeacherDashboard: React.FC = () => {
           </div>
         </div>
       )}
-
-      {showUpload && <UploadModal onClose={() => { setShowUpload(false); void refreshDocuments(); }} />}
 
       <style>{`
         .dashboard-page {

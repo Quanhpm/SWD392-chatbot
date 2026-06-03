@@ -7,9 +7,13 @@ import { DocumentModel } from '../models/Document.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 
-/** Lists all subjects sorted by creation date. Never returns the password hash. */
-export const listSubjects = async (): Promise<Omit<ISubject, 'password'>[]> => {
-  return SubjectModel.find().select('-password').sort({ createdAt: 1 }).lean().exec() as Promise<
+/** Lists subjects sorted by creation date. Teachers see their own subjects; students see all joinable subjects. */
+export const listSubjects = async (
+  userRole: 'teacher' | 'student',
+  userId: string,
+): Promise<Omit<ISubject, 'password'>[]> => {
+  const query = userRole === 'teacher' ? { teacherId: userId } : {};
+  return SubjectModel.find(query).select('-password').sort({ createdAt: 1 }).lean().exec() as Promise<
     Omit<ISubject, 'password'>[]
   >;
 };
@@ -88,13 +92,21 @@ export const enrollStudent = async (
 };
 
 /** Deletes a subject by ID. Blocks deletion if documents still reference it. */
-export const deleteSubject = async (id: string): Promise<void> => {
+export const deleteSubject = async (id: string, teacherId: string): Promise<void> => {
   const subject = await SubjectModel.findById(id).exec();
   if (!subject) {
     throw new AppError('Subject not found.', 404);
   }
+  if (subject.teacherId.toString() !== teacherId) {
+    throw new AppError('Access denied. You can only delete subjects you created.', 403);
+  }
 
-  const docCount = await DocumentModel.countDocuments({ subject: subject.name }).exec();
+  const docCount = await DocumentModel.countDocuments({
+    $or: [
+      { subjectId: subject._id },
+      { subject: subject.name },
+    ],
+  }).exec();
   if (docCount > 0) {
     throw new AppError(
       `Cannot delete "${subject.name}" because ${docCount} document(s) still belong to it. Delete the documents first.`,

@@ -55,7 +55,7 @@ export const useUpload = (onSuccess?: () => void) => {
     }
   };
 
-  const startUpload = async (subject: string, chapter: number, chapterTitle: string) => {
+  const startUpload = async (subjectId: string, chapter: number, chapterTitle: string) => {
     if (!file) {
       setError('Please select a file to upload.');
       return;
@@ -66,7 +66,7 @@ export const useUpload = (onSuccess?: () => void) => {
     setError(null);
 
     try {
-      await uploadFile(file, subject, chapter, chapterTitle, (percent) => {
+      await uploadFile(file, subjectId, chapter, chapterTitle, (percent) => {
         setProgress(percent);
         if (percent === 100) {
           setStatus('processing');

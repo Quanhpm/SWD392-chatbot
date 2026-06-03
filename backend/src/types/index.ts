@@ -52,3 +52,13 @@ export interface ChatResponse {
     snippetPreview: string;
   }>;
 }
+
+export interface ChatResponseWithQuota extends ChatResponse {
+  quotaStatus?: {
+    allowed: boolean;
+    used: number;
+    limit: number;
+    planName: string;
+    remaining: number;
+  };
+}

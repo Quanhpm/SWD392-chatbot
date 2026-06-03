@@ -1,7 +1,9 @@
 import { env } from '../config/environment.js';
 import { ChatSessionModel, type IChatMessage, type IChatSession } from '../models/ChatSession.js';
+import { DocumentModel } from '../models/Document.js';
 import { SubjectModel } from '../models/Subject.js';
-import type { ChatResponse, RetrievalResult } from '../types/index.js';
+import type { ChatResponse, ChatResponseWithQuota, RetrievalResult } from '../types/index.js';
+import { SubscriptionService, type QuotaStatus } from './subscriptionService.js';
 import { GENERAL_SYSTEM_PROMPT, REFUSAL_MESSAGE, SYSTEM_PROMPT } from '../utils/constants.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { buildCitations } from './citationService.js';
@@ -29,34 +31,51 @@ export class ChatService {
     private embeddingPort: IEmbeddingPort,
     private llmPort: ILLMPort,
     private cachePort: ICachePort,
+    private subscriptionService: SubscriptionService,
   ) {}
 
   /**
-   * Creates a chat session scoped to a subject.
-   * If the user is a student, verifies they are enrolled in the subject.
+   * Creates a chat session scoped to a document.
+   * If the user is a student, verifies they are enrolled in the document's subject.
    */
   async createChatSession(
     title: string | undefined,
-    subjectId: string,
+    documentId: string,
     userId: string,
     userRole: 'teacher' | 'student',
     enrolledSubjectIds: string[],
   ): Promise<IChatSession> {
-    const subject = await SubjectModel.findById(subjectId).lean().exec();
+    const document = await DocumentModel.findById(documentId).lean().exec();
+    if (!document) {
+      throw new AppError('Document not found.', 404);
+    }
+
+    if (document.status !== 'indexed') {
+      throw new AppError('This document is not ready for chat yet.', 400);
+    }
+
+    if (userRole === 'teacher' && document.uploadedBy.toString() !== userId) {
+      throw new AppError('Access denied. You can only chat with documents you uploaded.', 403);
+    }
+
+    const subject = document.subjectId
+      ? await SubjectModel.findById(document.subjectId).lean().exec()
+      : await SubjectModel.findOne({ name: document.subject }).lean().exec();
     if (!subject) {
-      throw new AppError('Subject not found.', 404);
+      throw new AppError('Subject associated with this document no longer exists.', 404);
     }
 
     if (userRole === 'student') {
-      const isEnrolled = enrolledSubjectIds.includes(subjectId);
+      const isEnrolled = enrolledSubjectIds.includes(subject._id.toString());
       if (!isEnrolled) {
-        throw new AppError('You are not enrolled in this subject. Please enroll first.', 403);
+        throw new AppError('You are not enrolled in this document subject. Please enroll first.', 403);
       }
     }
 
     return ChatSessionModel.create({
-      title: title?.trim() || 'New Research Chat',
-      subjectId,
+      title: title?.trim() || `Hỏi đáp ${document.chapterTitle}`,
+      subjectId: subject._id,
+      documentId,
       userId,
       messages: [],
     });
@@ -64,7 +83,7 @@ export class ChatService {
 
   /** Lists chat sessions for the current user (no message history). */
   async listChatSessions(userId: string): Promise<IChatSession[]> {
-    return ChatSessionModel.find({ userId })
+    return ChatSessionModel.find({ userId, documentId: { $exists: true } })
       .select('-messages')
       .sort({ updatedAt: -1 })
       .lean()
@@ -79,6 +98,9 @@ export class ChatService {
       if (cachedSession.userId.toString() !== userId) {
         throw new AppError('Access denied. This session does not belong to you.', 403);
       }
+      if (!cachedSession.documentId) {
+        throw new AppError('This chat session is no longer compatible. Please start a new document chat.', 400);
+      }
       return cachedSession;
     }
 
@@ -88,6 +110,9 @@ export class ChatService {
     }
     if (session.userId.toString() !== userId) {
       throw new AppError('Access denied. This session does not belong to you.', 403);
+    }
+    if (!session.documentId) {
+      throw new AppError('This chat session is no longer compatible. Please start a new document chat.', 400);
     }
 
     await this.cachePort.set(cacheKey, session, 1800); // 30 minutes TTL
@@ -103,6 +128,9 @@ export class ChatService {
     if (session.userId.toString() !== userId) {
       throw new AppError('Access denied. This session does not belong to you.', 403);
     }
+    if (!session.documentId) {
+      throw new AppError('This chat session is no longer compatible. Please start a new document chat.', 400);
+    }
     await session.deleteOne();
     await this.cachePort.del(`chat_session:${id}`);
   }
@@ -110,10 +138,9 @@ export class ChatService {
   /**
    * Orchestrates the full RAG pipeline with security enforcement:
    * 1. Verifies session ownership
-   * 2. Resolves subjectId → subject name (string used in chunk metadata)
-   * 3. Verifies student enrollment in the session's subject
-   * 4. Passes subject name as MongoDB filter to retrieveRelevantChunks
-   *    — this prevents cross-course information leaks
+   * 2. Resolves the selected document and its subject
+   * 3. Verifies student enrollment in the document's subject
+   * 4. Restricts chunk retrieval to the selected document
    */
   async generateChatResponse(
     sessionId: string,
@@ -121,7 +148,7 @@ export class ChatService {
     userId: string,
     userRole: 'teacher' | 'student',
     enrolledSubjectIds: string[],
-  ): Promise<ChatResponse> {
+  ): Promise<ChatResponseWithQuota> {
     const session = await ChatSessionModel.findById(sessionId).exec();
     if (!session) {
       throw new AppError('Chat session not found', 404);
@@ -129,6 +156,19 @@ export class ChatService {
 
     if (session.userId.toString() !== userId) {
       throw new AppError('Access denied. This session does not belong to you.', 403);
+    }
+
+    const document = await DocumentModel.findById(session.documentId).lean().exec();
+    if (!document) {
+      throw new AppError('Document associated with this session no longer exists.', 404);
+    }
+
+    if (document.status !== 'indexed') {
+      throw new AppError('This document is not ready for chat yet.', 400);
+    }
+
+    if (userRole === 'teacher' && document.uploadedBy.toString() !== userId) {
+      throw new AppError('Access denied. You can only chat with documents you uploaded.', 403);
     }
 
     // Resolve subjectId (ObjectId) → subject name (string) for chunk metadata filtering
@@ -142,6 +182,18 @@ export class ChatService {
       const isEnrolled = enrolledSubjectIds.includes(session.subjectId.toString());
       if (!isEnrolled) {
         throw new AppError('You are not enrolled in this subject.', 403);
+      }
+    }
+
+    // Quota check for students — teachers have unlimited questions
+    let quotaStatus: QuotaStatus | undefined;
+    if (userRole === 'student') {
+      quotaStatus = await this.subscriptionService.checkQuota(userId, session.documentId.toString());
+      if (!quotaStatus.allowed) {
+        throw new AppError(
+          `Question limit reached (${quotaStatus.used}/${quotaStatus.limit} for ${quotaStatus.planName} plan) in this document. Upgrade your plan for more questions.`,
+          403,
+        );
       }
     }
 
@@ -162,12 +214,13 @@ export class ChatService {
 
     const queryEmbedding = await this.embeddingPort.generateEmbedding(userMessage);
 
-    // CRITICAL SECURITY: subjectName filter restricts retrieval to this course's chunks only
+    // CRITICAL SECURITY: document filter restricts retrieval to the selected document only
     const relevantChunks = await retrieveRelevantChunks(
       queryEmbedding,
       undefined,
       undefined,
       subjectName,
+      session.documentId.toString(),
     );
 
     if (relevantChunks.length === 0) {
@@ -184,7 +237,14 @@ export class ChatService {
             createdAt: new Date(),
           });
           await this.saveAndCacheSession(session);
-          return response;
+
+          // Increment quota for students after successful response
+          if (userRole === 'student') {
+            await this.subscriptionService.incrementQuota(userId, session.documentId.toString());
+            quotaStatus = await this.subscriptionService.checkQuota(userId, session.documentId.toString());
+          }
+
+          return { ...response, quotaStatus };
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unknown LLM chat error';
           session.messages.push({
@@ -206,7 +266,13 @@ export class ChatService {
         createdAt: new Date(),
       });
       await this.saveAndCacheSession(session);
-      return response;
+
+      if (userRole === 'student') {
+        await this.subscriptionService.incrementQuota(userId, session.documentId.toString());
+        quotaStatus = await this.subscriptionService.checkQuota(userId, session.documentId.toString());
+      }
+
+      return { ...response, quotaStatus };
     }
 
     const context = buildContext(relevantChunks);
@@ -228,7 +294,14 @@ Question: ${userMessage}`;
       const citations = buildCitations(relevantChunks);
       session.messages.push({ role: 'assistant', content, citations, createdAt: new Date() });
       await this.saveAndCacheSession(session);
-      return { content, citations };
+
+      // Increment quota for students after successful response
+      if (userRole === 'student') {
+        await this.subscriptionService.incrementQuota(userId, session.documentId.toString());
+        quotaStatus = await this.subscriptionService.checkQuota(userId, session.documentId.toString());
+      }
+
+      return { content, citations, quotaStatus };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown LLM chat error';
       session.messages.push({
