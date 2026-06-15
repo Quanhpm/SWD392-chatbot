@@ -33,9 +33,9 @@ export const AppHeader: React.FC = () => {
           <>
             <span className="header-role-chip">
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
-                {user.role === 'teacher' ? 'school' : 'person'}
+                {user.role === 'admin' ? 'admin_panel_settings' : user.role === 'teacher' ? 'school' : 'person'}
               </span>
-              {user.role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}
+              {user.role === 'admin' ? 'Quản trị viên' : user.role === 'teacher' ? 'Giảng viên' : 'Sinh viên'}
             </span>
             <div className="header-user flex-center">
               <div className="user-avatar flex-center" title={user.username}>

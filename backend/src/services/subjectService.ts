@@ -1,118 +1,68 @@
-import bcrypt from 'bcryptjs';
-
-import { env } from '../config/environment.js';
 import { SubjectModel, type ISubject } from '../models/Subject.js';
-import { UserModel } from '../models/User.js';
 import { DocumentModel } from '../models/Document.js';
+import { CourseClassModel } from '../models/CourseClass.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { logger } from '../utils/logger.js';
+import { getAccessibleSubjectIds } from './accessService.js';
+import type { UserRole } from '../types/index.js';
 
-/** Lists subjects sorted by creation date. Teachers see their own subjects; students see all joinable subjects. */
-export const listSubjects = async (
-  userRole: 'teacher' | 'student',
-  userId: string,
-): Promise<Omit<ISubject, 'password'>[]> => {
-  const query = userRole === 'teacher' ? { teacherId: userId } : {};
-  return SubjectModel.find(query).select('-password').sort({ createdAt: 1 }).lean().exec() as Promise<
-    Omit<ISubject, 'password'>[]
-  >;
+export const listSubjects = async (role: UserRole, userId: string): Promise<ISubject[]> => {
+  const query: Record<string, unknown> = {};
+  if (role !== 'admin') {
+    query._id = { $in: await getAccessibleSubjectIds({ id: userId, role }) };
+    query.isActive = true;
+  }
+  return SubjectModel.find(query).sort({ code: 1 }).lean().exec();
 };
 
-/**
- * Creates a new subject (teacher-only).
- * Explicitly hashes the course entry password before saving.
- */
 export const createSubject = async (
-  name: string,
-  description: string | undefined,
-  password: string,
-  teacherId: string,
-): Promise<Omit<ISubject, 'password'>> => {
-  const trimmed = name.trim();
-  if (!trimmed) {
-    throw new AppError('Subject name is required.', 400);
+  input: { code: string; name: string; description?: string },
+  adminId: string,
+): Promise<ISubject> => {
+  const code = input.code.trim().toUpperCase();
+  const name = input.name.trim();
+  if (await SubjectModel.exists({ $or: [{ code }, { name }] })) {
+    throw new AppError('Subject code or name already exists.', 409);
   }
-
-  if (!password || password.length < 4) {
-    throw new AppError('Course password must be at least 4 characters.', 400);
-  }
-
-  const existing = await SubjectModel.findOne({ name: trimmed }).lean().exec();
-  if (existing) {
-    throw new AppError(`Subject "${trimmed}" already exists.`, 409);
-  }
-
-  const hashedPassword = await bcrypt.hash(password, env.bcryptSaltRounds);
-
   const subject = await SubjectModel.create({
-    name: trimmed,
-    description: description?.trim(),
-    password: hashedPassword,
-    teacherId,
+    code,
+    name,
+    description: input.description?.trim(),
+    isActive: true,
+    createdBy: adminId,
   });
-
-  const subjectObj = subject.toObject();
-  const { password: _pw, ...withoutPassword } = subjectObj;
-  return withoutPassword as Omit<ISubject, 'password'>;
+  return subject.toObject();
 };
 
-/**
- * Enrolls a student into a subject by verifying the course password.
- * Adds the subject ObjectId to the student's enrolledSubjects array.
- */
-export const enrollStudent = async (
-  subjectId: string,
-  studentId: string,
-  coursePassword: string,
-): Promise<void> => {
-  const subject = await SubjectModel.findById(subjectId).exec();
-  if (!subject) {
-    throw new AppError('Subject not found.', 404);
-  }
-
-  const student = await UserModel.findById(studentId).exec();
-  if (!student) {
-    throw new AppError('Student not found.', 404);
-  }
-
-  if (student.enrolledSubjects.some((id) => id.toString() === subjectId)) {
-    throw new AppError('You are already enrolled in this subject.', 409);
-  }
-
-  // Verify course password against the bcrypt hash
-  const isMatch = await bcrypt.compare(coursePassword, subject.password);
-  if (!isMatch) {
-    throw new AppError('Incorrect course password.', 403);
-  }
-
-  student.enrolledSubjects.push(subject._id);
-  await student.save();
-
-  logger.info(`Student "${student.username}" enrolled in "${subject.name}"`);
-};
-
-/** Deletes a subject by ID. Blocks deletion if documents still reference it. */
-export const deleteSubject = async (id: string, teacherId: string): Promise<void> => {
+export const updateSubject = async (
+  id: string,
+  input: { code?: string; name?: string; description?: string; isActive?: boolean },
+): Promise<ISubject> => {
   const subject = await SubjectModel.findById(id).exec();
-  if (!subject) {
-    throw new AppError('Subject not found.', 404);
-  }
-  if (subject.teacherId.toString() !== teacherId) {
-    throw new AppError('Access denied. You can only delete subjects you created.', 403);
-  }
+  if (!subject) throw new AppError('Subject not found.', 404);
 
-  const docCount = await DocumentModel.countDocuments({
-    $or: [
-      { subjectId: subject._id },
-      { subject: subject.name },
-    ],
-  }).exec();
-  if (docCount > 0) {
-    throw new AppError(
-      `Cannot delete "${subject.name}" because ${docCount} document(s) still belong to it. Delete the documents first.`,
-      409,
-    );
+  const code = input.code?.trim().toUpperCase();
+  const name = input.name?.trim();
+  if (code && await SubjectModel.exists({ code, _id: { $ne: id } })) {
+    throw new AppError('Subject code already exists.', 409);
   }
+  if (name && await SubjectModel.exists({ name, _id: { $ne: id } })) {
+    throw new AppError('Subject name already exists.', 409);
+  }
+  if (code) subject.code = code;
+  if (name) subject.name = name;
+  if (input.description !== undefined) subject.description = input.description.trim();
+  if (input.isActive !== undefined) subject.isActive = input.isActive;
+  await subject.save();
+  return subject.toObject();
+};
 
-  await subject.deleteOne();
+export const archiveSubject = async (id: string): Promise<void> => {
+  const subject = await SubjectModel.findById(id).exec();
+  if (!subject) throw new AppError('Subject not found.', 404);
+  if (await DocumentModel.exists({ subjectId: subject._id, status: { $in: ['processing', 'pending'] } })) {
+    throw new AppError('Resolve processing or pending documents before archiving this subject.', 409);
+  }
+  subject.isActive = false;
+  await subject.save();
+  await CourseClassModel.updateMany({ subjectId: subject._id }, { status: 'archived' }).exec();
 };

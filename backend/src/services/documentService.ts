@@ -62,56 +62,48 @@ export class DocumentService {
     return document.toObject() as IDocument & { _id: Types.ObjectId };
   }
 
-  /**
-   * Lists documents with role-based access control:
-   * - Teacher: sees own uploaded documents (optionally filtered by subject/status)
-   * - Student: sees only documents from enrolled subjects
-   *   - With ?subject filter: 403 if not enrolled in that subject
-   *   - Without ?subject filter: auto-filters to enrolled subjects only
-   */
   async listDocuments(filters: {
     subject?: string;
     status?: string;
-    userRole?: 'teacher' | 'student';
+    uploadedByFilter?: string;
+    userRole: 'admin' | 'teacher' | 'student';
+    userId: string;
+    accessibleSubjectIds: string[];
     uploadedBy?: string;
-    enrolledSubjectIds?: string[];
-    enrolledSubjectNames?: string[];
   }): Promise<IDocument[]> {
     const query: Record<string, unknown> = {};
 
-    if (filters.userRole === 'teacher' && filters.uploadedBy) {
-      query.uploadedBy = filters.uploadedBy;
-    }
-
-    if (filters.subject) {
-      if (
-        filters.userRole === 'student' &&
-        filters.enrolledSubjectNames !== undefined &&
-        !filters.enrolledSubjectNames.includes(filters.subject)
-      ) {
-        throw new AppError('Access denied. You are not enrolled in this subject.', 403);
-      }
-      query.subject = filters.subject;
-    } else if (
-      filters.userRole === 'student' &&
-      filters.enrolledSubjectIds !== undefined &&
-      filters.enrolledSubjectNames !== undefined
-    ) {
-      // Auto-filter to enrolled subjects only (empty array → no results)
+    if (filters.userRole === 'student') {
+      query.status = 'approved';
+      query.subjectId = { $in: filters.accessibleSubjectIds };
+    } else if (filters.userRole === 'teacher') {
       query.$or = [
-        { subjectId: { $in: filters.enrolledSubjectIds } },
-        { subject: { $in: filters.enrolledSubjectNames } },
+        { uploadedBy: filters.userId },
+        { subjectId: { $in: filters.accessibleSubjectIds }, status: 'approved' },
       ];
     }
 
+    if (filters.subject) {
+      query.subject = filters.subject;
+    }
+
     if (
+      filters.userRole !== 'student' &&
       filters.status &&
-      ['uploaded', 'processing', 'indexed', 'failed'].includes(filters.status)
+      ['uploaded', 'processing', 'pending', 'approved', 'rejected', 'failed'].includes(filters.status)
     ) {
       query.status = filters.status;
     }
+    if (filters.userRole === 'admin' && filters.uploadedByFilter) {
+      query.uploadedBy = filters.uploadedByFilter;
+    }
 
-    return DocumentModel.find(query).sort({ uploadedAt: -1 }).lean().exec();
+    return DocumentModel.find(query)
+      .populate('uploadedBy', 'username fullName userCode')
+      .populate('reviewedBy', 'username fullName')
+      .sort({ uploadedAt: -1 })
+      .lean()
+      .exec() as unknown as Promise<IDocument[]>;
   }
 
   /** Returns a single document by id. */
@@ -124,15 +116,11 @@ export class DocumentService {
   }
 
   /** Deletes a document, associated chunks, and any leftover upload file. */
-  async deleteDocument(id: string, actor?: { role: 'teacher' | 'student'; userId: string }): Promise<number> {
+  async deleteDocument(id: string): Promise<number> {
     const document = await DocumentModel.findById(id).exec();
     if (!document) {
       throw new AppError('Document not found', 404);
     }
-    if (actor?.role === 'teacher' && document.uploadedBy.toString() !== actor.userId) {
-      throw new AppError('Access denied. You can only delete documents you uploaded.', 403);
-    }
-
     const [deleteResult] = await Promise.all([
       ChunkModel.deleteMany({ documentId: document._id }).exec(),
       DocumentAssistModel.deleteOne({ documentId: document._id }).exec(),
@@ -188,12 +176,12 @@ export class DocumentService {
         })),
       );
 
-      document.status = 'indexed';
+      document.status = 'pending';
       document.totalChunks = chunks.length;
       document.totalPages = parseResult.pageCount;
       document.indexedAt = new Date();
       await document.save();
-      logger.info(`Indexed ${document.originalName} with ${chunks.length} chunks`);
+      logger.info(`Processed ${document.originalName} with ${chunks.length} chunks; awaiting approval`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown document processing error';
       document.status = 'failed';
@@ -204,6 +192,39 @@ export class DocumentService {
       // Keep physical file for PDF nhúng previewer
       // await deleteFileIfExists(filePath);
     }
+  }
+
+  async approveDocument(documentId: string, adminId: string): Promise<IDocument> {
+    const document = await DocumentModel.findById(documentId).exec();
+    if (!document) throw new AppError('Document not found.', 404);
+    if (document.status !== 'pending') throw new AppError('Only pending documents can be approved.', 400);
+    if (document.totalChunks <= 0) throw new AppError('Document has no processed chunks.', 400);
+    document.status = 'approved';
+    document.reviewedBy = new Types.ObjectId(adminId);
+    document.reviewedAt = new Date();
+    document.rejectionReason = undefined;
+    await document.save();
+    return document.toObject();
+  }
+
+  async rejectDocument(documentId: string, adminId: string, reason: string): Promise<IDocument> {
+    const document = await DocumentModel.findById(documentId).exec();
+    if (!document) throw new AppError('Document not found.', 404);
+    if (document.status !== 'pending') throw new AppError('Only pending documents can be rejected.', 400);
+
+    await Promise.all([
+      ChunkModel.deleteMany({ documentId: document._id }).exec(),
+      DocumentAssistModel.deleteOne({ documentId: document._id }).exec(),
+      ChatSessionModel.deleteMany({ documentId: document._id }).exec(),
+      QuestionQuotaModel.deleteMany({ documentId: document._id }).exec(),
+    ]);
+    document.status = 'rejected';
+    document.totalChunks = 0;
+    document.reviewedBy = new Types.ObjectId(adminId);
+    document.reviewedAt = new Date();
+    document.rejectionReason = reason.trim();
+    await document.save();
+    return document.toObject();
   }
 
   /** Returns cached DocumentAssist data if present. */

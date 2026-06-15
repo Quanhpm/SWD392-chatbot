@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
-import type { IUser, UserRole } from '../types/index.js';
+import type { IUser } from '../types/index.js';
 import { login as apiLogin, register as apiRegister } from '../services/authApi.js';
 
 interface AuthState {
@@ -12,8 +12,7 @@ interface AuthState {
 type AuthAction =
   | { type: 'AUTH_SUCCESS'; payload: { user: IUser; token: string } }
   | { type: 'LOGOUT' }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'UPDATE_ENROLLED'; payload: string[] };
+  | { type: 'SET_LOADING'; payload: boolean };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
@@ -29,10 +28,6 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
       return { user: null, token: null, isAuthenticated: false, isLoading: false };
     case 'SET_LOADING':
       return { ...state, isLoading: action.payload };
-    case 'UPDATE_ENROLLED':
-      return state.user
-        ? { ...state, user: { ...state.user, enrolledSubjects: action.payload } }
-        : state;
     default:
       return state;
   }
@@ -48,9 +43,8 @@ const initialState: AuthState = {
 interface AuthContextProps {
   state: AuthState;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string, role: UserRole) => Promise<void>;
+  register: (input: { username: string; password: string; fullName: string; email: string; userCode: string }) => Promise<void>;
   logout: () => void;
-  addEnrolledSubject: (subjectId: string) => void;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -92,8 +86,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'AUTH_SUCCESS', payload: { user: result.user, token: result.token } });
   }, []);
 
-  const register = useCallback(async (username: string, password: string, role: UserRole) => {
-    const result = await apiRegister(username, password, role);
+  const register = useCallback(async (input: { username: string; password: string; fullName: string; email: string; userCode: string }) => {
+    const result = await apiRegister(input);
     localStorage.setItem('auth_token', result.token);
     localStorage.setItem('auth_user', JSON.stringify(result.user));
     dispatch({ type: 'AUTH_SUCCESS', payload: { user: result.user, token: result.token } });
@@ -105,17 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'LOGOUT' });
   }, []);
 
-  const addEnrolledSubject = useCallback((subjectId: string) => {
-    if (state.user) {
-      const updated = [...state.user.enrolledSubjects, subjectId];
-      const updatedUser = { ...state.user, enrolledSubjects: updated };
-      localStorage.setItem('auth_user', JSON.stringify(updatedUser));
-      dispatch({ type: 'UPDATE_ENROLLED', payload: updated });
-    }
-  }, [state.user]);
-
   return (
-    <AuthContext.Provider value={{ state, login, register, logout, addEnrolledSubject }}>
+    <AuthContext.Provider value={{ state, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

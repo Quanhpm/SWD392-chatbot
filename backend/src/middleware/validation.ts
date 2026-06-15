@@ -58,9 +58,14 @@ export const registerValidators = [
   body('password')
     .isLength({ min: 6, max: 100 })
     .withMessage('Password must be 6-100 characters.'),
-  body('role')
-    .isIn(['teacher', 'student'])
-    .withMessage('Role must be "teacher" or "student".'),
+  body('fullName').trim().isLength({ min: 2, max: 100 }).withMessage('Full name must be 2-100 characters.'),
+  body('email').isEmail().normalizeEmail().withMessage('A valid email is required.'),
+  body('userCode')
+    .trim()
+    .isLength({ min: 3, max: 30 })
+    .matches(/^[a-zA-Z0-9_-]+$/)
+    .withMessage('User code must be 3-30 letters, numbers, underscores, or hyphens.'),
+  body('role').optional().equals('student').withMessage('Public registration only supports the student role.'),
 ];
 
 export const loginValidators = [
@@ -71,14 +76,11 @@ export const loginValidators = [
 // ─── Subject Validators ───────────────────────────────────────────────────────
 
 export const createSubjectValidators = [
+  body('code')
+    .trim()
+    .isLength({ min: 2, max: 20 })
+    .matches(/^[a-zA-Z0-9_-]+$/)
+    .withMessage('Subject code must be 2-20 letters, numbers, underscores, or hyphens.'),
   body('name').trim().notEmpty().withMessage('Subject name is required.'),
-  body('password')
-    .isLength({ min: 4 })
-    .withMessage('Course password must be at least 4 characters.'),
   body('description').optional().trim(),
-];
-
-export const enrollValidators = [
-  param('id').isMongoId().withMessage('Invalid subject id.'),
-  body('password').notEmpty().withMessage('Course password is required.'),
 ];

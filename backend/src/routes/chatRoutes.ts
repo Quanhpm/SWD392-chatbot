@@ -33,7 +33,6 @@ chatRoutes.post(
         documentId,
         req.user!.id,
         req.user!.role,
-        req.user!.enrolledSubjects.map((id) => id.toString()),
       );
 
       res.status(201).json({ success: true, session });
@@ -97,7 +96,6 @@ chatRoutes.post(
         String(req.body.message),
         req.user!.id,
         req.user!.role,
-        req.user!.enrolledSubjects.map((enrolledId) => enrolledId.toString()),
       );
 
       res.json({

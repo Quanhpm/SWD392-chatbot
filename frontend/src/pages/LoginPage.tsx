@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
-import type { UserRole } from '../types/index.js';
 
 type Tab = 'login' | 'register';
 
@@ -10,9 +9,11 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [tab, setTab] = useState<Tab>('login');
-  const [role, setRole] = useState<UserRole>('student');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [userCode, setUserCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export const LoginPage: React.FC = () => {
       if (tab === 'login') {
         await login(username, password);
       } else {
-        await register(username, password, role);
+        await register({ username, password, fullName, email, userCode });
       }
       navigate('/', { replace: true });
     } catch (err) {
@@ -60,14 +61,14 @@ export const LoginPage: React.FC = () => {
                 <p>Trợ lý ảo hỗ trợ giải đáp thắc mắc dựa trên nội dung tài liệu.</p>
               </div>
               <div className="login-feature-card glass">
-                <span className="material-symbols-outlined login-feature-icon">lock</span>
-                <h3>Bảo mật môn học</h3>
-                <p>Mỗi môn học được khóa riêng bằng mật khẩu do giảng viên thiết lập.</p>
+                <span className="material-symbols-outlined login-feature-icon">verified_user</span>
+                <h3>Tài liệu kiểm duyệt</h3>
+                <p>Tài liệu học tập được quản trị viên duyệt trước khi công bố.</p>
               </div>
               <div className="login-feature-card glass">
                 <span className="material-symbols-outlined login-feature-icon">school</span>
                 <h3>Phân quyền rõ ràng</h3>
-                <p>Phân biệt vai trò Giảng viên và Sinh viên với đặc quyền riêng biệt.</p>
+                <p>Quản trị viên, Giảng viên và Sinh viên có đúng công cụ cho vai trò của mình.</p>
               </div>
             </div>
           </div>
@@ -109,37 +110,30 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <form className="login-form" onSubmit={handleSubmit}>
-              {/* Role selector (register only) */}
               {tab === 'register' && (
-                <div className="role-selector">
-                  <label className="role-label">Tôi là:</label>
-                  <div className="role-cards">
-                    <label className={`role-card ${role === 'teacher' ? 'selected' : ''}`}>
-                      <input
-                        type="radio"
-                        name="role"
-                        value="teacher"
-                        checked={role === 'teacher'}
-                        onChange={() => setRole('teacher')}
-                        className="role-radio"
-                      />
-                      <span className="material-symbols-outlined role-card-icon">school</span>
-                      <span>Giảng viên</span>
-                    </label>
-                    <label className={`role-card ${role === 'student' ? 'selected' : ''}`}>
-                      <input
-                        type="radio"
-                        name="role"
-                        value="student"
-                        checked={role === 'student'}
-                        onChange={() => setRole('student')}
-                        className="role-radio"
-                      />
-                      <span className="material-symbols-outlined role-card-icon">person</span>
-                      <span>Sinh viên</span>
-                    </label>
+                <>
+                  <div className="form-field">
+                    <label className="field-label">Họ và tên</label>
+                    <div className="form-input-icon-wrap">
+                      <span className="material-symbols-outlined form-input-icon">badge</span>
+                      <input className="form-input" value={fullName} onChange={(e) => setFullName(e.target.value)} required minLength={2} />
+                    </div>
                   </div>
-                </div>
+                  <div className="form-field">
+                    <label className="field-label">Email</label>
+                    <div className="form-input-icon-wrap">
+                      <span className="material-symbols-outlined form-input-icon">mail</span>
+                      <input className="form-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    </div>
+                  </div>
+                  <div className="form-field">
+                    <label className="field-label">Mã sinh viên</label>
+                    <div className="form-input-icon-wrap">
+                      <span className="material-symbols-outlined form-input-icon">pin</span>
+                      <input className="form-input" value={userCode} onChange={(e) => setUserCode(e.target.value.toUpperCase())} required minLength={3} pattern="[A-Za-z0-9_-]+" />
+                    </div>
+                  </div>
+                </>
               )}
 
               {/* Username field */}

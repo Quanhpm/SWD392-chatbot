@@ -3,11 +3,11 @@ import { body, param } from 'express-validator';
 
 import { subscriptionService } from '../config/dependencies.js';
 import { DocumentModel } from '../models/Document.js';
-import { SubjectModel } from '../models/Subject.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { mongoIdParamValidator, validateRequest } from '../middleware/validation.js';
+import { validateRequest } from '../middleware/validation.js';
+import { assertDocumentAccess } from '../services/accessService.js';
 
 export const subscriptionRoutes = Router();
 
@@ -23,16 +23,7 @@ const verifyQuotaDocumentAccess = async (req: Request, documentId: string): Prom
     throw new AppError('Document not found.', 404);
   }
 
-  const subjectId = document.subjectId
-    ? document.subjectId.toString()
-    : (await SubjectModel.findOne({ name: document.subject }).select('_id').lean().exec())?._id.toString();
-
-  if (
-    !subjectId ||
-    !req.user!.enrolledSubjects.some((enrolledId) => enrolledId.toString() === subjectId)
-  ) {
-    throw new AppError('Access denied. You are not enrolled in this document subject.', 403);
-  }
+  await assertDocumentAccess({ id: req.user!.id, role: req.user!.role }, document);
 };
 
 // ─── Public ───────────────────────────────────────────────────────────────────
@@ -70,11 +61,12 @@ subscriptionRoutes.get('/me', async (req: Request, res: Response, next: NextFunc
 
 /**
  * POST /api/subscriptions/subscribe
- * Subscribe to a plan. Paid plans start as 'pending' until approved.
+ * Subscribe to a plan immediately in demo-payment mode.
  * Body: { planName: 'free' | 'plus' | 'pro' }
  */
 subscriptionRoutes.post(
   '/subscribe',
+  requireRole('student'),
   planNameValidator,
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -90,9 +82,9 @@ subscriptionRoutes.post(
 
 /**
  * POST /api/subscriptions/cancel
- * Cancel the current active or pending subscription.
+ * Cancel the current active subscription.
  */
-subscriptionRoutes.post('/cancel', async (req: Request, res: Response, next: NextFunction) => {
+subscriptionRoutes.post('/cancel', requireRole('student'), async (req: Request, res: Response, next: NextFunction) => {
   try {
     await subscriptionService.cancelSubscription(req.user!.id);
     res.json({ success: true, message: 'Subscription cancelled.' });
@@ -130,65 +122,6 @@ subscriptionRoutes.get(
       await verifyQuotaDocumentAccess(req, documentId);
       const quota = await subscriptionService.getDocumentQuota(req.user!.id, documentId);
       res.json({ success: true, quota });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-// ─── Admin / Teacher Only ─────────────────────────────────────────────────────
-
-/**
- * GET /api/subscriptions/admin/pending
- * List all pending subscriptions awaiting approval.
- */
-subscriptionRoutes.get(
-  '/admin/pending',
-  requireRole('teacher'),
-  async (_req: Request, res: Response, next: NextFunction) => {
-    try {
-      const pending = await subscriptionService.listPendingSubscriptions();
-      res.json({ success: true, subscriptions: pending });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-/**
- * POST /api/subscriptions/admin/:id/approve
- * Approve a pending subscription.
- */
-subscriptionRoutes.post(
-  '/admin/:id/approve',
-  requireRole('teacher'),
-  mongoIdParamValidator,
-  validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.params as { id: string };
-      const subscription = await subscriptionService.approveSubscription(id, req.user!.id);
-      res.json({ success: true, subscription });
-    } catch (error) {
-      next(error);
-    }
-  },
-);
-
-/**
- * POST /api/subscriptions/admin/:id/reject
- * Reject a pending subscription.
- */
-subscriptionRoutes.post(
-  '/admin/:id/reject',
-  requireRole('teacher'),
-  mongoIdParamValidator,
-  validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { id } = req.params as { id: string };
-      await subscriptionService.rejectSubscription(id);
-      res.json({ success: true, message: 'Subscription rejected.' });
     } catch (error) {
       next(error);
     }

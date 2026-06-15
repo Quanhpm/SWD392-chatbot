@@ -37,9 +37,8 @@ export const requireAuth = async (
 
     const decoded = jwt.verify(token, env.jwtSecret) as JwtPayload;
 
-    // Fetch fresh user to get current enrolledSubjects state
     const user = await UserModel.findById(decoded.id)
-      .select('username role enrolledSubjects')
+      .select('username role fullName email userCode isActive')
       .lean()
       .exec();
 
@@ -47,12 +46,18 @@ export const requireAuth = async (
       res.status(401).json({ success: false, error: 'User not found. Token may be invalid.' });
       return;
     }
+    if (!user.isActive) {
+      res.status(403).json({ success: false, error: 'This account has been deactivated.' });
+      return;
+    }
 
     req.user = {
       id: user._id.toString(),
       username: user.username,
       role: user.role as UserRole,
-      enrolledSubjects: user.enrolledSubjects,
+      fullName: user.fullName,
+      email: user.email,
+      userCode: user.userCode,
     };
 
     next();

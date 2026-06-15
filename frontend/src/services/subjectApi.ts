@@ -7,30 +7,18 @@ export const getSubjects = async (): Promise<ISubject[]> => {
   return response.data.subjects;
 };
 
-/** Creates a new subject (Teacher only). */
-export const createSubject = async (
-  name: string,
-  password: string,
-  description?: string,
-): Promise<ISubject> => {
-  const response = await api.post<{ success: boolean; subject: ISubject }>('/subjects', {
-    name,
-    password,
-    description,
-  });
+/** Creates a new subject (Admin only). */
+export const createSubject = async (input: { code: string; name: string; description?: string }): Promise<ISubject> => {
+  const response = await api.post<{ success: boolean; subject: ISubject }>('/subjects', input);
   return response.data.subject;
 };
 
-/** Enrolls the current student in a subject using a course password. */
-export const enrollInSubject = async (subjectId: string, password: string): Promise<string> => {
-  const response = await api.post<{ success: boolean; message: string }>(
-    `/subjects/${subjectId}/enroll`,
-    { password },
-  );
-  return response.data.message;
+export const updateSubject = async (id: string, input: Partial<Pick<ISubject, 'code' | 'name' | 'description' | 'isActive'>>): Promise<ISubject> => {
+  const response = await api.patch<{ success: boolean; subject: ISubject }>(`/subjects/${id}`, input);
+  return response.data.subject;
 };
 
-/** Deletes a subject by ID (Teacher only). */
+/** Archives a subject (Admin only). */
 export const deleteSubject = async (id: string): Promise<string> => {
   const response = await api.delete<{ success: boolean; message: string }>(`/subjects/${id}`);
   return response.data.message;

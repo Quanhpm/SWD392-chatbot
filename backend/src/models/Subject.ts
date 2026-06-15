@@ -1,10 +1,11 @@
 import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 
 export interface ISubject {
+  code: string;
   name: string;
   description?: string;
-  password: string;          // bcrypt-hashed course entry password
-  teacherId: Types.ObjectId; // ref → User (teacher who created it)
+  isActive: boolean;
+  createdBy: Types.ObjectId;
   createdAt: Date;
 }
 
@@ -12,10 +13,11 @@ export type SubjectDocument = HydratedDocument<ISubject>;
 
 const subjectSchema = new Schema<ISubject>(
   {
+    code: { type: String, required: true, unique: true, sparse: true, uppercase: true, trim: true },
     name: { type: String, required: true, unique: true, trim: true },
     description: { type: String, trim: true },
-    password: { type: String, required: true },
-    teacherId: {
+    isActive: { type: Boolean, default: true, index: true },
+    createdBy: {
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true,

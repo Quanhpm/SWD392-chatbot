@@ -46,7 +46,7 @@ export const PricingPage: React.FC = () => {
     try {
       setSubscribing(planName);
       await subscriptionApi.subscribeToPlan(planName);
-      setToast({ type: 'success', message: planName === 'free' ? 'Đã chuyển về gói Miễn phí!' : 'Đăng ký thành công! Đang chờ quản trị viên phê duyệt.' });
+      setToast({ type: 'success', message: planName === 'free' ? 'Đã chuyển về gói Miễn phí!' : 'Gói demo đã được kích hoạt ngay.' });
       await fetchData();
     } catch (err) {
       setToast({ type: 'error', message: err instanceof Error ? err.message : 'Đăng ký thất bại. Vui lòng thử lại.' });
@@ -67,11 +67,7 @@ export const PricingPage: React.FC = () => {
   };
 
   const isCurrentPlan = (planName: string) => {
-    return role !== 'teacher' && currentPlanName === planName && currentSub?.status !== 'cancelled';
-  };
-
-  const isPending = (planName: string) => {
-    return currentSub?.planName === planName && currentSub?.status === 'pending';
+    return role === 'student' && currentPlanName === planName && currentSub?.status !== 'cancelled';
   };
 
   if (loading) {
@@ -109,7 +105,6 @@ export const PricingPage: React.FC = () => {
         {plans.map((plan) => {
           const tier = getPlanTier(plan.name);
           const isCurrent = isCurrentPlan(plan.name);
-          const pending = isPending(plan.name);
           const isPopular = tier === 'plus';
           const isPro = tier === 'pro';
 
@@ -164,20 +159,10 @@ export const PricingPage: React.FC = () => {
               </ul>
 
               <div className="pricing-card-footer">
-                {isCurrent && !pending ? (
+                {isCurrent ? (
                   <div className="pricing-current-badge">
                     <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified</span>
                     Gói hiện tại
-                  </div>
-                ) : pending ? (
-                  <div className="pricing-pending-badge">
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>hourglass_top</span>
-                    Đang chờ duyệt
-                  </div>
-                ) : role === 'teacher' ? (
-                  <div className="pricing-teacher-note">
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>all_inclusive</span>
-                    Không giới hạn
                   </div>
                 ) : (
                   <button
@@ -206,7 +191,7 @@ export const PricingPage: React.FC = () => {
       {/* Payment info */}
       <div className="pricing-payment-info">
         <span className="material-symbols-outlined" style={{ fontSize: 20, color: 'var(--color-info)' }}>info</span>
-        <p>Thanh toán bằng chuyển khoản ngân hàng. Gói sẽ được kích hoạt sau khi quản trị viên xác nhận thanh toán.</p>
+        <p>Demo mode: không kết nối cổng thanh toán. Plus/Pro được kích hoạt ngay khi chọn.</p>
       </div>
 
       {/* Toast */}
@@ -505,32 +490,6 @@ const PricingStyle: React.FC = () => (
       background: var(--color-secondary-container);
       color: var(--color-on-secondary-container);
     }
-    .pricing-pending-badge {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 14px;
-      border-radius: var(--radius-xl);
-      font: var(--text-label-md);
-      font-weight: 700;
-      background: rgba(245, 158, 11, 0.12);
-      color: #b45309;
-    }
-    .pricing-teacher-note {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      padding: 14px;
-      border-radius: var(--radius-xl);
-      font: var(--text-label-md);
-      color: var(--color-on-surface-variant);
-      background: var(--color-surface-container);
-    }
-
     /* ── Payment info ── */
     .pricing-payment-info {
       display: flex;

@@ -22,6 +22,11 @@ export interface Environment {
   jwtExpiresIn: string;
   bcryptSaltRounds: number;
   redisUrl?: string;
+  adminUsername?: string;
+  adminPassword?: string;
+  adminEmail?: string;
+  adminFullName?: string;
+  adminUserCode?: string;
 }
 
 const readString = (name: string, fallback?: string): string => {
@@ -74,4 +79,9 @@ export const env: Environment = {
   jwtExpiresIn: readString('JWT_EXPIRES_IN', '7d'),
   bcryptSaltRounds: readNumber('BCRYPT_SALT_ROUNDS', 10),
   redisUrl: process.env.REDIS_URL || undefined,
+  adminUsername: process.env.ADMIN_USERNAME?.trim() || undefined,
+  adminPassword: process.env.ADMIN_PASSWORD || undefined,
+  adminEmail: process.env.ADMIN_EMAIL?.trim() || undefined,
+  adminFullName: process.env.ADMIN_FULL_NAME?.trim() || undefined,
+  adminUserCode: process.env.ADMIN_USER_CODE?.trim() || undefined,
 };

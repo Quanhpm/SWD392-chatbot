@@ -1,397 +1,43 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
-import { useApp } from '../context/AppContext.js';
-import { enrollInSubject } from '../services/subjectApi.js';
-import type { ISubject } from '../types/index.js';
+import { getClasses, joinClass } from '../services/classApi.js';
+import type { ICourseClass, ISubject } from '../types/index.js';
+
+const subjectOf = (courseClass: ICourseClass): ISubject | undefined => typeof courseClass.subjectId === 'string' ? undefined : courseClass.subjectId;
 
 export const StudentPortal: React.FC = () => {
-  const { state: authState, addEnrolledSubject } = useAuth();
-  const { state: appState } = useApp();
   const navigate = useNavigate();
+  const { state: authState } = useAuth();
+  const [classes, setClasses] = useState<ICourseClass[]>([]);
+  const [joinCode, setJoinCode] = useState('');
+  const [message, setMessage] = useState<string | null>(null);
+  const [joining, setJoining] = useState(false);
 
-  const [enrollModal, setEnrollModal] = useState<ISubject | null>(null);
-  const [enrollPassword, setEnrollPassword] = useState('');
-  const [enrollError, setEnrollError] = useState<string | null>(null);
-  const [isEnrolling, setIsEnrolling] = useState(false);
-  const [successSubject, setSuccessSubject] = useState<string | null>(null);
+  const load = async () => setClasses(await getClasses());
+  useEffect(() => { void load(); }, []);
+  const enrolledClasses = classes.filter((item) => item.enrolled);
+  const joinableClasses = classes.filter((item) => !item.enrolled && item.allowSelfEnrollment);
+  const subjects = useMemo(() => Array.from(new Map(enrolledClasses.map((item) => {
+    const subject = subjectOf(item);
+    return [subject?._id ?? String(item.subjectId), subject];
+  })).values()).filter(Boolean) as ISubject[], [classes]);
 
-  const enrolledIds = new Set(authState.user?.enrolledSubjects ?? []);
-  const subjects = appState.subjects as ISubject[];
-
-  const openEnroll = (subject: ISubject) => {
-    setEnrollModal(subject);
-    setEnrollPassword('');
-    setEnrollError(null);
+  const handleJoin = async (event: React.FormEvent) => {
+    event.preventDefault(); setJoining(true); setMessage(null);
+    try { await joinClass(joinCode); setJoinCode(''); setMessage('Tham gia lớp thành công.'); await load(); }
+    catch (error) { setMessage(error instanceof Error ? error.message : 'Không thể tham gia lớp.'); }
+    finally { setJoining(false); }
   };
 
-  const handleEnroll = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!enrollModal) return;
-    setEnrollError(null);
-    setIsEnrolling(true);
-    try {
-      await enrollInSubject(enrollModal._id, enrollPassword);
-      addEnrolledSubject(enrollModal._id);
-      setSuccessSubject(enrollModal.name);
-      setEnrollModal(null);
-      setTimeout(() => setSuccessSubject(null), 3500);
-    } catch (err) {
-      setEnrollError(err instanceof Error ? err.message : 'Đăng ký thất bại');
-    } finally {
-      setIsEnrolling(false);
-    }
-  };
-
-  const handleEnterCourse = (subject: ISubject) => {
-    navigate(`/study/${subject._id}`);
-  };
-
-  return (
-    <div className="portal-page">
-      {/* Toast */}
-      {successSubject && (
-        <div className="toast toast-success">
-          <span className="material-symbols-outlined">check_circle</span>
-          Đã tham gia môn học "{successSubject}" thành công!
-        </div>
-      )}
-
-      {/* Hero */}
-      <section className="portal-hero">
-        <div className="portal-hero-overlay" />
-        <div className="portal-hero-content">
-          <h1 className="portal-hero-title">
-            Chào mừng trở lại, {authState.user?.username}!
-          </h1>
-          <p className="portal-hero-sub">
-            Khám phá các môn học và bắt đầu hành trình chinh phục kiến thức cùng AI.
-          </p>
-          <div className="portal-hero-stats">
-            <div className="hero-stat">
-              <span className="hero-stat-num">{enrolledIds.size}</span>
-              <span className="hero-stat-label">Đã tham gia</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-num">{subjects.length - enrolledIds.size}</span>
-              <span className="hero-stat-label">Chưa tham gia</span>
-            </div>
-            <div className="hero-stat-divider" />
-            <div className="hero-stat">
-              <span className="hero-stat-num">{subjects.length}</span>
-              <span className="hero-stat-label">Tổng môn học</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Subject Grid */}
-      <div className="portal-section">
-        <div className="portal-section-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span className="material-symbols-outlined" style={{ color: 'var(--color-primary)' }}>school</span>
-            <h2 className="portal-section-title">Tất cả môn học</h2>
-          </div>
-          <div className="portal-filter-chips">
-            <span className="portal-chip active">Tất cả ({subjects.length})</span>
-            <span className="portal-chip">Đã tham gia ({enrolledIds.size})</span>
-          </div>
-        </div>
-
-        {subjects.length === 0 ? (
-          <div className="portal-empty">
-            <span className="material-symbols-outlined" style={{ fontSize: 64, color: 'var(--color-outline)' }}>school</span>
-            <p style={{ font: 'var(--text-headline-md)', color: 'var(--color-on-surface-variant)' }}>
-              Chưa có môn học nào
-            </p>
-            <p style={{ font: 'var(--text-body-sm)', color: 'var(--color-outline)' }}>
-              Vui lòng liên hệ giảng viên để được thêm vào các môn học.
-            </p>
-          </div>
-        ) : (
-          <div className="subject-grid">
-            {subjects.map((subj) => {
-              const isEnrolled = enrolledIds.has(subj._id);
-              return (
-                <div key={subj._id} className={`subject-card ${isEnrolled ? 'enrolled' : 'locked'}`}>
-                  {/* Card header visual */}
-                  <div className="subject-card-visual">
-                    <div className="subject-card-bg" />
-                    {isEnrolled ? (
-                      <span className="subject-card-badge badge badge-success">
-                        <span className="material-symbols-outlined" style={{ fontSize: 14, fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                        Đã tham gia
-                      </span>
-                    ) : (
-                      <div className="subject-card-lock">
-                        <span className="material-symbols-outlined" style={{ fontSize: 36, fontVariationSettings: "'FILL' 1" }}>lock</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Card content */}
-                  <div className="subject-card-body">
-                    <h3 className="subject-card-name">{subj.name}</h3>
-                    {subj.description && (
-                      <p className="subject-card-desc">{subj.description}</p>
-                    )}
-                    <div className="subject-card-footer">
-                      {isEnrolled ? (
-                        <button className="btn-primary subject-card-btn" onClick={() => handleEnterCourse(subj)}>
-                          <span className="material-symbols-outlined">chat</span>
-                          Vào học
-                        </button>
-                      ) : (
-                        <button className="btn-outline subject-card-btn" onClick={() => openEnroll(subj)}>
-                          <span className="material-symbols-outlined">lock_open</span>
-                          Tham gia ngay
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Enroll Modal */}
-      {enrollModal && (
-        <div className="modal-overlay" onClick={() => setEnrollModal(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-icon-header">
-              <div className="modal-icon-wrap" style={{ background: 'var(--color-primary-fixed)', color: 'var(--color-primary)' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 28 }}>lock_open</span>
-              </div>
-              <h3 className="modal-title">Tham gia môn học</h3>
-              <p className="modal-sub">
-                <strong>{enrollModal.name}</strong>
-                <br />
-                Vui lòng nhập mật khẩu do giảng viên cung cấp để tham gia lớp học.
-              </p>
-            </div>
-            <form onSubmit={handleEnroll} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div className="form-field">
-                <label className="field-label">Mật khẩu truy cập</label>
-                <div className="form-input-icon-wrap">
-                  <span className="material-symbols-outlined form-input-icon">key</span>
-                  <input
-                    className="form-input"
-                    type="password"
-                    placeholder="Nhập mật khẩu môn học..."
-                    value={enrollPassword}
-                    onChange={(e) => setEnrollPassword(e.target.value)}
-                    required
-                    autoFocus
-                  />
-                </div>
-              </div>
-              {enrollError && (
-                <div className="login-error">
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>error</span>
-                  {enrollError}
-                </div>
-              )}
-              <div className="modal-actions">
-                <button type="button" className="btn-ghost" onClick={() => setEnrollModal(null)}>
-                  Hủy bỏ
-                </button>
-                <button type="submit" className="btn-primary" disabled={isEnrolling}>
-                  {isEnrolling
-                    ? <><span className="spinner spinner-sm" /> Đang xác nhận...</>
-                    : <><span className="material-symbols-outlined">check</span> Xác nhận tham gia</>}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Floating AI chat FAB */}
-      <button className="fab-chat" onClick={() => navigate('/chat')} title="Mở RAG Chatbot">
-        <span className="material-symbols-outlined" style={{ fontSize: 28, fontVariationSettings: "'FILL' 1" }}>chat_bubble</span>
-      </button>
-
-      <style>{`
-        .portal-page {
-          min-height: 100%;
-          display: flex;
-          flex-direction: column;
-          gap: var(--spacing-xl);
-        }
-
-        /* Hero */
-        .portal-hero {
-          position: relative;
-          background: linear-gradient(135deg, var(--color-primary-container) 0%, var(--color-primary) 100%);
-          padding: 48px var(--page-margin);
-          color: white;
-          overflow: hidden;
-        }
-        .portal-hero-overlay {
-          position: absolute;
-          right: 0; top: 0;
-          width: 50%;
-          height: 100%;
-          background: linear-gradient(to left, rgba(0,106,97,0.3), transparent);
-          pointer-events: none;
-        }
-        .portal-hero-content { position: relative; z-index: 1; }
-        .portal-hero-title { font: var(--text-headline-xl); color: white; margin-bottom: 12px; }
-        .portal-hero-sub { font: var(--text-body-md); opacity: 0.85; max-width: 480px; margin-bottom: 24px; }
-        .portal-hero-stats { display: flex; align-items: center; gap: 24px; }
-        .hero-stat { display: flex; flex-direction: column; align-items: center; }
-        .hero-stat-num { font: var(--text-headline-lg); color: white; }
-        .hero-stat-label { font: var(--text-label-sm); opacity: 0.75; }
-        .hero-stat-divider { width: 1px; height: 40px; background: rgba(255,255,255,0.3); }
-
-        /* Section */
-        .portal-section { padding: 0 var(--page-margin) var(--spacing-2xl); }
-        .portal-section-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: 24px;
-          flex-wrap: wrap;
-          gap: 12px;
-        }
-        .portal-section-title { font: var(--text-headline-md); color: var(--color-on-surface); }
-        .portal-filter-chips { display: flex; gap: 8px; }
-        .portal-chip {
-          padding: 6px 16px;
-          border-radius: var(--radius-full);
-          font: var(--text-label-md);
-          background: var(--color-surface-container-high);
-          color: var(--color-on-surface-variant);
-          cursor: pointer;
-          transition: all var(--transition-fast);
-        }
-        .portal-chip.active {
-          background: var(--color-primary);
-          color: white;
-        }
-
-        /* Empty */
-        .portal-empty {
-          padding: 80px 24px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 12px;
-          text-align: center;
-        }
-
-        /* Subject Grid */
-        .subject-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-          gap: 20px;
-        }
-
-        /* Subject Card */
-        .subject-card {
-          background: var(--color-surface-container-lowest);
-          border: 1px solid var(--color-outline-variant);
-          border-radius: var(--radius-2xl);
-          overflow: hidden;
-          transition: box-shadow var(--transition-base), transform var(--transition-base);
-          display: flex;
-          flex-direction: column;
-        }
-        .subject-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
-        .subject-card.enrolled { border-color: var(--color-secondary-container); }
-
-        /* Card visual area */
-        .subject-card-visual {
-          height: 140px;
-          position: relative;
-          overflow: hidden;
-        }
-        .subject-card-bg {
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(135deg, var(--color-primary-fixed) 0%, var(--color-secondary-container) 100%);
-          transition: transform var(--transition-slow);
-        }
-        .subject-card:hover .subject-card-bg { transform: scale(1.05); }
-        .subject-card.locked .subject-card-bg {
-          filter: grayscale(60%);
-        }
-        .subject-card-badge {
-          position: absolute;
-          top: 12px;
-          right: 12px;
-        }
-        .subject-card-lock {
-          position: absolute;
-          inset: 0;
-          background: rgba(11, 28, 48, 0.4);
-          backdrop-filter: blur(3px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
-
-        /* Card body */
-        .subject-card-body {
-          padding: 20px;
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          flex: 1;
-        }
-        .subject-card-name {
-          font: var(--text-headline-md);
-          color: var(--color-on-surface);
-          line-height: 1.3;
-        }
-        .subject-card-desc {
-          font: var(--text-body-sm);
-          color: var(--color-on-surface-variant);
-          line-height: 1.5;
-          flex: 1;
-        }
-        .subject-card-footer { margin-top: 12px; }
-        .subject-card-btn { width: 100%; justify-content: center; }
-
-        /* Modal */
-        .modal-icon-header { text-align: center; margin-bottom: 24px; }
-        .modal-icon-wrap {
-          width: 56px;
-          height: 56px;
-          border-radius: var(--radius-2xl);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          margin: 0 auto 16px;
-        }
-        .modal-title { font: var(--text-headline-md); margin-bottom: 8px; }
-        .modal-sub { font: var(--text-body-sm); color: var(--color-on-surface-variant); line-height: 1.6; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 12px; padding-top: 8px; }
-
-        /* FAB */
-        .fab-chat {
-          position: fixed;
-          bottom: 32px;
-          right: 32px;
-          width: 56px;
-          height: 56px;
-          border-radius: var(--radius-full);
-          background: var(--color-primary);
-          color: white;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          box-shadow: var(--shadow-xl);
-          transition: transform var(--transition-spring), background var(--transition-fast);
-          z-index: 200;
-        }
-        .fab-chat:hover { transform: scale(1.12); background: var(--color-primary-container); }
-        .fab-chat:active { transform: scale(0.95); }
-      `}</style>
-    </div>
-  );
+  return <div className="student-portal"><section className="student-hero"><div><span>STUDENT PORTAL</span><h1>Xin chào, {authState.user?.fullName || authState.user?.username}</h1><p>Vào lớp bằng mã do giảng viên chia sẻ, sau đó học từ tài liệu đã được admin duyệt.</p></div><form onSubmit={handleJoin}><input maxLength={12} required placeholder="Nhập join code" value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())}/><button disabled={joining}>{joining ? 'Đang tham gia...' : 'Tham gia lớp'}</button></form></section>
+    {message && <div className="student-message">{message}</div>}
+    <section className="student-section"><div className="student-title"><h2>Môn học của tôi</h2><span>{subjects.length} môn</span></div><div className="subject-grid">{subjects.map((subject) => <button key={subject._id} className="subject-card" onClick={() => navigate(`/study/${subject._id}`)}><div className="subject-icon"><span className="material-symbols-outlined">auto_stories</span></div><strong>{subject.code}</strong><h3>{subject.name}</h3><p>{subject.description || 'Tài liệu dùng chung của môn học.'}</p><span className="open-label">Vào học <span className="material-symbols-outlined">arrow_forward</span></span></button>)}</div>{subjects.length === 0 && <div className="student-empty">Bạn chưa tham gia lớp active nào.</div>}</section>
+    <section className="student-section"><div className="student-title"><h2>Lớp đã tham gia</h2><span>{enrolledClasses.length} lớp</span></div><div className="class-list">{enrolledClasses.map((courseClass) => <article key={courseClass._id}><div><strong>{courseClass.code}</strong><h3>{courseClass.name}</h3><p>{subjectOf(courseClass)?.code} · {subjectOf(courseClass)?.name}</p></div><span className="active-label">Đang học</span></article>)}</div></section>
+    {joinableClasses.length > 0 && <section className="student-section"><div className="student-title"><h2>Lớp đang mở tự đăng ký</h2></div><div className="class-list">{joinableClasses.map((courseClass) => <article key={courseClass._id}><div><strong>{courseClass.code}</strong><h3>{courseClass.name}</h3><p>{subjectOf(courseClass)?.name}</p></div><small>Cần join code để tham gia</small></article>)}</div></section>}<StudentStyle />
+  </div>;
 };
+
+const StudentStyle = () => <style>{`
+.student-portal{padding:32px;max-width:1400px;margin:auto}.student-hero{background:linear-gradient(125deg,#003c36,#006a61);color:#fff;padding:34px;border-radius:22px;display:flex;justify-content:space-between;align-items:center;gap:25px}.student-hero>div>span{font-size:12px;letter-spacing:2px;color:#86f2e4}.student-hero h1{font-size:31px;margin:7px 0}.student-hero form{display:flex;background:white;padding:6px;border-radius:12px;min-width:360px}.student-hero input{flex:1;padding:10px;color:#0b1c30;text-transform:uppercase;letter-spacing:1px}.student-hero button{background:#00236f;color:#fff;padding:10px 14px;border-radius:8px}.student-message{margin:14px 0;padding:12px 16px;background:#dff7f2;color:#005047;border-radius:10px}.student-section{margin-top:24px}.student-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.student-title>span{color:#666}.subject-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.subject-card{text-align:left;background:#fff;border:1px solid #e1e5ee;border-radius:16px;padding:20px;transition:.2s}.subject-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-md)}.subject-icon{width:42px;height:42px;border-radius:12px;background:#dff7f2;color:#006a61;display:grid;place-items:center;margin-bottom:14px}.subject-card>strong{font-size:12px;color:#006a61}.subject-card h3{font-size:19px;margin:5px 0}.subject-card p{color:#666;min-height:40px}.open-label{display:flex;align-items:center;gap:5px;color:#00236f;font-weight:600;margin-top:15px}.class-list{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.class-list article{background:#fff;border:1px solid #e1e5ee;border-radius:14px;padding:17px;display:flex;justify-content:space-between;align-items:center}.class-list p,.class-list small{color:#666;margin-top:4px}.active-label{background:#dff7f2;color:#006a61;padding:6px 10px;border-radius:20px;font-size:12px}.student-empty{background:#fff;border:1px dashed #bbb;border-radius:14px;padding:35px;text-align:center;color:#666}@media(max-width:900px){.student-hero{align-items:flex-start}.student-hero form{min-width:300px}.subject-grid{grid-template-columns:1fr 1fr}}@media(max-width:650px){.student-portal{padding:18px}.student-hero{flex-direction:column}.student-hero form{min-width:100%;width:100%}.subject-grid,.class-list{grid-template-columns:1fr}}
+`}</style>;

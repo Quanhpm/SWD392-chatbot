@@ -1,5 +1,5 @@
 import api from './api.js';
-import type { IUser, UserRole } from '../types/index.js';
+import type { IUser } from '../types/index.js';
 
 interface AuthResponse {
   success: boolean;
@@ -9,11 +9,9 @@ interface AuthResponse {
 
 /** Registers a new user and returns JWT token + user */
 export const register = async (
-  username: string,
-  password: string,
-  role: UserRole,
+  input: { username: string; password: string; fullName: string; email: string; userCode: string },
 ): Promise<AuthResponse> => {
-  const response = await api.post<AuthResponse>('/auth/register', { username, password, role });
+  const response = await api.post<AuthResponse>('/auth/register', input);
   return response.data;
 };
 

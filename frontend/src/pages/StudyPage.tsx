@@ -273,14 +273,6 @@ const StudyPageInner: React.FC = () => {
     const activeSub = appState.subjects.find((s) => s._id === subjectId) as ISubject;
     if (activeSub) {
       setSubject(activeSub);
-      // Double check enrollment for students
-      if (
-        authState.user?.role === 'student' &&
-        !authState.user.enrolledSubjects.includes(subjectId!)
-      ) {
-        navigate('/portal', { replace: true });
-        return;
-      }
     } else if (appState.subjects.length > 0) {
       // Only redirect if subjects list is loaded and this ID doesn't exist
       navigate('/portal', { replace: true });
@@ -293,11 +285,17 @@ const StudyPageInner: React.FC = () => {
     const loadDocs = async () => {
       setIsLoadingDocs(true);
       try {
-        const docs = await getDocuments({ subject: activeSub.name, status: 'indexed' });
-        setDocuments(docs.sort((a, b) => a.chapter - b.chapter));
+        const docs = await getDocuments({
+          subject: activeSub.name,
+          status: authState.user?.role === 'student' ? 'approved' : undefined,
+        });
+        const visibleDocs = docs.filter((document) => authState.user?.role === 'teacher'
+          ? ['approved', 'pending'].includes(document.status)
+          : document.status === 'approved');
+        setDocuments(visibleDocs.sort((a, b) => a.chapter - b.chapter));
         // Auto-select first document if available
-        if (docs.length > 0) {
-          void selectDocument(docs[0] as IDocument);
+        if (visibleDocs.length > 0) {
+          void selectDocument(visibleDocs[0] as IDocument);
         }
       } catch (err) {
         console.error('Failed to load course documents:', err);
@@ -756,7 +754,7 @@ const StudyPageInner: React.FC = () => {
               ) : (
                 /* ── Mode 2: AI Study Assistant (Bento grid + 3D Flashcards) ── */
                 (() => {
-                  const currentAssistData = assistData || (selectedDoc && [1, 2, 3, 4, 5].includes(selectedDoc.chapter) ? studyAssistData[selectedDoc.chapter] : null);
+                  const currentAssistData = assistData;
 
                   if (isGeneratingAssist) {
                     return (
@@ -799,18 +797,15 @@ const StudyPageInner: React.FC = () => {
                         <div className="placeholder-icon-wrap">
                           <span className="material-symbols-outlined brain-pulse">psychology</span>
                         </div>
-                        <h3>Trí tuệ nhân tạo Gemini sẵn sàng hỗ trợ bạn</h3>
-                        <p>Phân tích và tóm tắt toàn bộ tệp tài liệu để đúc kết các khái niệm cốt lõi (Bento Grid) và tự động thiết kế thẻ nhớ ghi nhớ 3D thông minh chỉ trong một nút nhấn!</p>
+                        <h3>{authState.user?.role === 'teacher' ? 'Tạo Study Assist cho tài liệu' : 'Study Assist chưa có sẵn'}</h3>
+                        <p>{authState.user?.role === 'teacher' ? 'Gemini sẽ phân tích tài liệu để tạo key takeaways và flashcards trước khi hoặc sau khi admin duyệt.' : 'Giảng viên phụ trách chưa tạo bản tóm tắt và flashcards cho tài liệu này.'}</p>
                         {assistError && (
                           <div className="assist-error-banner">
                             <span className="material-symbols-outlined">warning</span>
                             <p>{assistError}</p>
                           </div>
                         )}
-                        <button onClick={handleGenerateAssist} className="generate-assist-btn">
-                          <span className="material-symbols-outlined">auto_awesome</span>
-                          Tạo Tóm Tắt & Thẻ Nhớ
-                        </button>
+                        {authState.user?.role === 'teacher' && <button onClick={handleGenerateAssist} className="generate-assist-btn"><span className="material-symbols-outlined">auto_awesome</span>Tạo Tóm Tắt & Thẻ Nhớ</button>}
                       </div>
                     );
                   }

@@ -8,7 +8,7 @@ export const authRoutes = Router();
 /**
  * POST /api/auth/register
  * Public — no token required.
- * Body: { username, password, role: 'teacher' | 'student' }
+ * Body: { username, password, fullName, email, userCode }
  */
 authRoutes.post(
   '/register',
@@ -16,13 +16,15 @@ authRoutes.post(
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { username, password, role } = req.body as {
+      const { username, password, fullName, email, userCode } = req.body as {
         username: string;
         password: string;
-        role: 'teacher' | 'student';
+        fullName: string;
+        email: string;
+        userCode: string;
       };
 
-      const result = await authService.register(username, password, role);
+      const result = await authService.register({ username, password, fullName, email, userCode });
 
       res.status(201).json({
         success: true,

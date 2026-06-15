@@ -36,14 +36,9 @@ export class SubscriptionService {
     return sub;
   }
 
-  /** Return a pending request when present, otherwise the active subscription. */
+  /** Return the active subscription. */
   async getCurrentSubscription(userId: string): Promise<IUserSubscription | null> {
-    const pending = await UserSubscriptionModel.findOne({
-      userId,
-      status: 'pending',
-    }).sort({ createdAt: -1 }).lean().exec();
-
-    return pending ?? this.getUserSubscription(userId);
+    return this.getUserSubscription(userId);
   }
 
   /** Get the effective plan name for a user (falls back to 'free') */
@@ -63,22 +58,10 @@ export class SubscriptionService {
     return freePlan;
   }
 
-  /** Subscribe to a plan. For paid plans, status is 'pending' until approved. */
+  /** Subscribe immediately in demo-payment mode. */
   async subscribeToPlan(userId: string, planName: string): Promise<IUserSubscription> {
     const plan = await SubscriptionPlanModel.findOne({ name: planName, isActive: true }).lean().exec();
     if (!plan) throw new AppError('Plan not found or inactive.', 404);
-
-    const pending = await UserSubscriptionModel.findOne({
-      userId,
-      status: 'pending',
-    }).lean().exec();
-
-    if (pending) {
-      throw new AppError(
-        `You already have a pending subscription (${pending.planName}). Cancel it first.`,
-        409,
-      );
-    }
 
     const active = await this.getUserSubscription(userId);
     const effectivePlanName = active?.planName ?? 'free';
@@ -87,25 +70,30 @@ export class SubscriptionService {
     }
 
     const now = new Date();
-    const isPaid = plan.price > 0;
-
-    if (!isPaid) {
-      await UserSubscriptionModel.updateMany(
-        { userId, status: 'active' },
-        { status: 'cancelled' },
-      );
-    }
+    await UserSubscriptionModel.updateMany(
+      { userId, status: { $in: ['active', 'pending'] } },
+      { status: 'cancelled' },
+    );
 
     const subscription = await UserSubscriptionModel.create({
       userId,
       planName: plan.name,
-      status: isPaid ? 'pending' : 'active',
+      status: 'active',
       startDate: now,
       endDate: plan.durationDays
         ? new Date(now.getTime() + plan.durationDays * 24 * 60 * 60 * 1000)
         : null,
-      paymentMethod: 'manual',
+      paymentMethod: 'demo',
     });
+
+    await QuestionQuotaModel.updateMany(
+      { userId },
+      {
+        questionCount: 0,
+        periodStart: now,
+        periodEnd: subscription.endDate,
+      },
+    );
 
     return subscription.toObject();
   }
@@ -118,63 +106,6 @@ export class SubscriptionService {
     );
     if (result.modifiedCount === 0) {
       throw new AppError('No active subscription to cancel.', 404);
-    }
-  }
-
-  /** Admin: list pending subscriptions */
-  async listPendingSubscriptions(): Promise<IUserSubscription[]> {
-    return UserSubscriptionModel.find({ status: 'pending' })
-      .sort({ createdAt: -1 })
-      .populate('userId', 'username role')
-      .lean()
-      .exec();
-  }
-
-  /** Admin: approve a pending subscription */
-  async approveSubscription(subscriptionId: string, adminId: string): Promise<IUserSubscription> {
-    const sub = await UserSubscriptionModel.findById(subscriptionId).exec();
-    if (!sub) throw new AppError('Subscription not found.', 404);
-    if (sub.status !== 'pending') throw new AppError('Subscription is not pending.', 400);
-
-    const plan = await SubscriptionPlanModel.findOne({ name: sub.planName }).lean().exec();
-    if (!plan) throw new AppError('Subscription plan is not configured.', 500);
-
-    const now = new Date();
-    const endDate = plan.durationDays
-      ? new Date(now.getTime() + plan.durationDays * 24 * 60 * 60 * 1000)
-      : null;
-
-    await UserSubscriptionModel.updateMany(
-      { userId: sub.userId, status: 'active', _id: { $ne: sub._id } },
-      { status: 'cancelled' },
-    );
-
-    sub.status = 'active';
-    sub.startDate = now;
-    sub.endDate = endDate;
-    sub.approvedBy = adminId as any;
-    await sub.save();
-
-    await QuestionQuotaModel.updateMany(
-      { userId: sub.userId },
-      {
-        questionCount: 0,
-        periodStart: now,
-        periodEnd: endDate,
-      },
-    );
-
-    return sub.toObject();
-  }
-
-  /** Admin: reject a pending subscription */
-  async rejectSubscription(subscriptionId: string): Promise<void> {
-    const result = await UserSubscriptionModel.updateOne(
-      { _id: subscriptionId, status: 'pending' },
-      { status: 'cancelled' },
-    );
-    if (result.modifiedCount === 0) {
-      throw new AppError('Subscription not found or not pending.', 404);
     }
   }
 

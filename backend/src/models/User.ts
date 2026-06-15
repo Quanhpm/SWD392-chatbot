@@ -6,8 +6,12 @@ import { env } from '../config/environment.js';
 export interface IUser {
   username: string;
   password: string;
-  role: 'teacher' | 'student';
-  enrolledSubjects: Types.ObjectId[];
+  role: 'admin' | 'teacher' | 'student';
+  fullName: string;
+  email: string;
+  userCode: string;
+  isActive: boolean;
+  deactivatedAt?: Date;
   createdAt: Date;
 }
 
@@ -31,14 +35,13 @@ const userSchema = new Schema<IUser>(
     role: {
       type: String,
       required: true,
-      enum: ['teacher', 'student'],
+      enum: ['admin', 'teacher', 'student'],
     },
-    enrolledSubjects: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'Subject',
-      },
-    ],
+    fullName: { type: String, required: true, trim: true },
+    email: { type: String, required: true, unique: true, sparse: true, lowercase: true, trim: true },
+    userCode: { type: String, required: true, unique: true, sparse: true, uppercase: true, trim: true },
+    isActive: { type: Boolean, default: true, index: true },
+    deactivatedAt: { type: Date },
     createdAt: { type: Date, default: Date.now },
   },
   {

@@ -9,11 +9,16 @@ import { documentRoutes } from './routes/documentRoutes.js';
 import { subjectRoutes } from './routes/subjectRoutes.js';
 import { subscriptionRoutes } from './routes/subscriptionRoutes.js';
 import { testSetRoutes } from './routes/testSetRoutes.js';
+import { adminRoutes } from './routes/adminRoutes.js';
+import { classRoutes } from './routes/classRoutes.js';
 import { subscriptionService } from './config/dependencies.js';
+import { documentService } from './config/dependencies.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { QuestionQuotaModel } from './models/QuestionQuota.js';
 import { logger } from './utils/logger.js';
 import { seedSubscriptionPlans } from './utils/seedPlans.js';
+import { seedInitialAdmin } from './utils/seedAdmin.js';
+import { DocumentModel } from './models/Document.js';
 
 const app = express();
 
@@ -32,10 +37,12 @@ app.get('/', (_req, res) => {
     endpoints: {
       health: 'GET /api/health',
       auth: 'POST /api/auth/register | POST /api/auth/login',
-      subjects: 'GET|POST /api/subjects | POST /api/subjects/:id/enroll',
-      documents: 'GET|POST|DELETE /api/documents',
+      subjects: 'GET|POST|PATCH|DELETE /api/subjects',
+      documents: 'GET|POST|DELETE /api/documents | POST /api/documents/:id/approve|reject',
       chat: 'GET|POST|DELETE /api/chat/sessions',
       subscriptions: 'GET|POST /api/subscriptions',
+      admin: 'GET|POST|PATCH|DELETE /api/admin',
+      classes: 'GET|POST|PATCH|DELETE /api/classes',
       testSet: 'GET /api/test-set',
     },
   });
@@ -47,6 +54,8 @@ app.get('/api/health', (_req, res) => {
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);         // Public: register & login
+app.use('/api/admin', adminRoutes);       // Admin-only user management
+app.use('/api/classes', classRoutes);     // Class assignment and enrollment
 app.use('/api/subjects', subjectRoutes);  // Protected: CRUD + enrollment
 app.use('/api/documents', documentRoutes); // Protected: teacher-only upload
 app.use('/api/chat', chatRoutes);         // Protected: document-scoped chat
@@ -58,10 +67,18 @@ app.use(errorHandler);
 
 const startServer = async (): Promise<void> => {
   await connectDatabase();
+  await seedInitialAdmin();
   await seedSubscriptionPlans();
   await QuestionQuotaModel.syncIndexes();
   await subscriptionService.expireSubscriptions();
   await subscriptionService.resetMonthlyQuotas();
+
+  const interruptedDocuments = await DocumentModel.find({ status: 'uploaded' }).select('_id').lean().exec();
+  for (const document of interruptedDocuments) {
+    void documentService.processDocument(document._id.toString()).catch((error) => {
+      logger.error(`Document resume failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    });
+  }
 
   const housekeepingTimer = setInterval(() => {
     void subscriptionService.expireSubscriptions().catch((error) => {
@@ -73,9 +90,7 @@ const startServer = async (): Promise<void> => {
   }, 60 * 60 * 1_000);
   housekeepingTimer.unref();
 
-  // NOTE: seedDefaultSubject() has been removed — subjects now require
-  // password and teacherId fields which cannot be auto-seeded.
-  // Create subjects via POST /api/subjects with a teacher account.
+  // Subjects and classes are created by administrators through their APIs.
   app.listen(env.port, () => {
     logger.info(`🚀 Backend listening on http://localhost:${env.port}`);
     logger.info(`📚 Environment: ${env.nodeEnv}`);

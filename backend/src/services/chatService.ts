@@ -11,6 +11,8 @@ import { retrieveRelevantChunks } from './retrievalService.js';
 import type { IEmbeddingPort } from '../ports/IEmbeddingPort.js';
 import type { ILLMPort } from '../ports/ILLMPort.js';
 import type { ICachePort } from '../ports/ICachePort.js';
+import { assertDocumentAccess } from './accessService.js';
+import type { UserRole } from '../types/index.js';
 
 const buildContext = (retrievalResults: RetrievalResult[]): string =>
   retrievalResults
@@ -42,34 +44,20 @@ export class ChatService {
     title: string | undefined,
     documentId: string,
     userId: string,
-    userRole: 'teacher' | 'student',
-    enrolledSubjectIds: string[],
+    userRole: UserRole,
   ): Promise<IChatSession> {
     const document = await DocumentModel.findById(documentId).lean().exec();
     if (!document) {
       throw new AppError('Document not found.', 404);
     }
 
-    if (document.status !== 'indexed') {
-      throw new AppError('This document is not ready for chat yet.', 400);
-    }
-
-    if (userRole === 'teacher' && document.uploadedBy.toString() !== userId) {
-      throw new AppError('Access denied. You can only chat with documents you uploaded.', 403);
-    }
+    await assertDocumentAccess({ id: userId, role: userRole }, document, 'chat');
 
     const subject = document.subjectId
       ? await SubjectModel.findById(document.subjectId).lean().exec()
       : await SubjectModel.findOne({ name: document.subject }).lean().exec();
     if (!subject) {
       throw new AppError('Subject associated with this document no longer exists.', 404);
-    }
-
-    if (userRole === 'student') {
-      const isEnrolled = enrolledSubjectIds.includes(subject._id.toString());
-      if (!isEnrolled) {
-        throw new AppError('You are not enrolled in this document subject. Please enroll first.', 403);
-      }
     }
 
     return ChatSessionModel.create({
@@ -146,8 +134,7 @@ export class ChatService {
     sessionId: string,
     userMessage: string,
     userId: string,
-    userRole: 'teacher' | 'student',
-    enrolledSubjectIds: string[],
+    userRole: UserRole,
   ): Promise<ChatResponseWithQuota> {
     const session = await ChatSessionModel.findById(sessionId).exec();
     if (!session) {
@@ -163,26 +150,12 @@ export class ChatService {
       throw new AppError('Document associated with this session no longer exists.', 404);
     }
 
-    if (document.status !== 'indexed') {
-      throw new AppError('This document is not ready for chat yet.', 400);
-    }
-
-    if (userRole === 'teacher' && document.uploadedBy.toString() !== userId) {
-      throw new AppError('Access denied. You can only chat with documents you uploaded.', 403);
-    }
+    await assertDocumentAccess({ id: userId, role: userRole }, document, 'chat');
 
     // Resolve subjectId (ObjectId) → subject name (string) for chunk metadata filtering
     const subject = await SubjectModel.findById(session.subjectId).lean().exec();
     if (!subject) {
       throw new AppError('Subject associated with this session no longer exists.', 404);
-    }
-
-    // Verify student is still enrolled in the subject
-    if (userRole === 'student') {
-      const isEnrolled = enrolledSubjectIds.includes(session.subjectId.toString());
-      if (!isEnrolled) {
-        throw new AppError('You are not enrolled in this subject.', 403);
-      }
     }
 
     // Quota check for students — teachers have unlimited questions

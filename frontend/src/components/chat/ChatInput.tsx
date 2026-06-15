@@ -22,7 +22,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const recognitionRef = useRef<any>(null);
 
   const activeDocsCount = appState.documents.filter(
-    (doc) => doc.status === 'indexed'
+    (doc) => authState.user?.role === 'teacher'
+      ? ['approved', 'pending'].includes(doc.status)
+      : doc.status === 'approved'
   ).length;
 
   // Auto-grow textarea rows from 2 to 6 rows

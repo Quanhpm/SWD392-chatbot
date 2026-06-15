@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "migrate:admin-classes": "tsx src/utils/migrateAdminClasses.ts",
+    "migrate:admin-classes:dry": "tsx src/utils/migrateAdminClasses.ts --dry-run"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

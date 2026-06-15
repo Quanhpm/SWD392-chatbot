@@ -20,6 +20,9 @@ export interface IDocument {
   processedAt?: Date;
   indexedAt?: Date;
   uploadedBy: Types.ObjectId; // ref → User (teacher who uploaded)
+  reviewedBy?: Types.ObjectId;
+  reviewedAt?: Date;
+  rejectionReason?: string;
 }
 
 export type DocumentDocument = HydratedDocument<IDocument>;
@@ -42,7 +45,7 @@ const documentSchema = new Schema<IDocument>(
     status: {
       type: String,
       required: true,
-      enum: ['uploaded', 'processing', 'indexed', 'failed'],
+      enum: ['uploaded', 'processing', 'pending', 'approved', 'rejected', 'failed'],
       default: 'uploaded',
     },
     errorMessage: { type: String },
@@ -56,6 +59,9 @@ const documentSchema = new Schema<IDocument>(
       ref: 'User',
       required: true,
     },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    reviewedAt: { type: Date },
+    rejectionReason: { type: String, trim: true },
   },
   {
     versionKey: false,

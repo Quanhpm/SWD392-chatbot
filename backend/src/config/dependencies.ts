@@ -8,6 +8,8 @@ import { DocumentService } from '../services/documentService.js';
 import { ChatService } from '../services/chatService.js';
 import { AuthService } from '../services/authService.js';
 import { SubscriptionService } from '../services/subscriptionService.js';
+import { AdminService } from '../services/adminService.js';
+import { ClassService } from '../services/classService.js';
 import type { ICachePort } from '../ports/ICachePort.js';
 
 // 1. Instantiate concrete adapters (Driven Adapters)
@@ -25,3 +27,5 @@ export const documentService = new DocumentService(parserAdapter, embeddingAdapt
 export const subscriptionService = new SubscriptionService();
 export const chatService = new ChatService(embeddingAdapter, chatAdapter, cacheAdapter, subscriptionService);
 export const authService = new AuthService();
+export const adminService = new AdminService();
+export const classService = new ClassService();

@@ -32,7 +32,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, 
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const isTerminal = document.status === 'indexed' || document.status === 'failed';
+  const canDelete = document.status !== 'approved' && document.status !== 'processing';
 
   return (
     <tr className="document-card-row fade-in">
@@ -48,6 +48,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, 
               {document.originalName}
             </span>
             <span className="doc-size">{formatSize(document.fileSize)}</span>
+            {document.rejectionReason && <span className="doc-rejection" title={document.rejectionReason}>Lý do: {document.rejectionReason}</span>}
           </div>
         </div>
       </td>
@@ -70,7 +71,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, 
 
       {/* Chunks */}
       <td className="doc-chunks-cell">
-        {document.status === 'indexed' ? (
+        {document.totalChunks > 0 ? (
           <span className="chunk-count">{document.totalChunks} chunks</span>
         ) : (
           <span className="chunk-pending">—</span>
@@ -89,7 +90,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, 
       {/* Actions */}
       {canManage && (
         <td className="doc-actions-cell">
-          {!isTerminal ? (
+          {!canDelete ? (
             <span className="loading-dots">⏳</span>
           ) : (
             <button
@@ -135,6 +136,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, 
           font: var(--text-label-md);
           color: var(--color-outline);
         }
+        .doc-rejection { color: var(--color-error); font-size: 11px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; }
         .doc-subject-cell {
           max-width: 180px;
           color: var(--color-on-surface-variant);

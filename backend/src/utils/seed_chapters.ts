@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
 import { env } from '../config/environment.js';
 import { SubjectModel } from '../models/Subject.js';
 import { UserModel } from '../models/User.js';
@@ -9,6 +8,7 @@ import { ChatSessionModel } from '../models/ChatSession.js';
 import { DocumentAssistModel } from '../models/DocumentAssist.js';
 import { QuestionQuotaModel } from '../models/QuestionQuota.js';
 import { GeminiEmbeddingAdapter } from '../adapters/GeminiEmbeddingAdapter.js';
+import { CourseClassModel } from '../models/CourseClass.js';
 
 const run = async () => {
   try {
@@ -25,24 +25,37 @@ const run = async () => {
 
     // 2. Fetch or Create the Subject
     const subjectName = 'Software Modeling and Design';
-    const hashedPassword = await bcrypt.hash('password123', env.bcryptSaltRounds);
-    
     let subject = await SubjectModel.findOne({ name: subjectName }).exec();
     if (subject) {
-      subject.teacherId = teacherId;
-      subject.password = hashedPassword;
       subject.description = 'Software design concepts, UML diagrams, architectural patterns, and SOLID principles.';
+      subject.isActive = true;
       await subject.save();
       console.log(`📚 Updated existing Subject: "${subjectName}"`);
     } else {
       subject = await SubjectModel.create({
+        code: 'SWD392',
         name: subjectName,
         description: 'Software design concepts, UML diagrams, architectural patterns, and SOLID principles.',
-        password: hashedPassword,
-        teacherId,
+        isActive: true,
+        createdBy: teacherId,
       });
       console.log(`📚 Created new Subject: "${subjectName}"`);
     }
+
+    await CourseClassModel.findOneAndUpdate(
+      { code: 'SWD392-DEMO' },
+      {
+        code: 'SWD392-DEMO',
+        name: 'Software Modeling Demo Class',
+        subjectId: subject._id,
+        teacherId,
+        status: 'active',
+        allowSelfEnrollment: true,
+        joinCode: 'SWDDEMO1',
+        createdBy: teacherId,
+      },
+      { upsert: true, new: true },
+    );
 
     // 3. Define the detailed 5 Chapters
     const chaptersData = [
@@ -120,7 +133,7 @@ const run = async () => {
         subject: subjectName,
         chapter: chData.chapter,
         chapterTitle: chData.chapterTitle,
-        status: 'indexed',
+        status: 'approved',
         totalChunks: chData.chunks.length,
         totalPages: 2,
         uploadedBy: teacherId,

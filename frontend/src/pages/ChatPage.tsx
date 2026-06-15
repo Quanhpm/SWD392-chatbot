@@ -36,7 +36,9 @@ const ChatInner: React.FC = () => {
   const documents = appState.documents as IDocument[];
   const role = authState.user?.role;
 
-  const availableDocuments = documents.filter((doc) => doc.status === 'indexed');
+  const availableDocuments = documents.filter((doc) => role === 'teacher'
+    ? ['approved', 'pending'].includes(doc.status)
+    : doc.status === 'approved');
   const sessionDocumentId = appState.sessions.find((session) => session._id === activeSessionId)?.documentId;
   const quotaDocumentId = sessionDocumentId ?? activeDocumentId;
 
@@ -146,7 +148,7 @@ const ChatInner: React.FC = () => {
       {availableDocuments.length === 0 && (
         <div className="chat-subject-bar">
           <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--color-outline)' }}>info</span>
-          <span className="chat-subject-label">Chưa có tài liệu đã lập chỉ mục để hỏi đáp.</span>
+          <span className="chat-subject-label">Chưa có tài liệu khả dụng để hỏi đáp.</span>
         </div>
       )}
 

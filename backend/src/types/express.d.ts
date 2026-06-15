@@ -6,8 +6,10 @@ declare global {
       user?: {
         id: string;
         username: string;
-        role: 'teacher' | 'student';
-        enrolledSubjects: Types.ObjectId[];
+        role: 'admin' | 'teacher' | 'student';
+        fullName: string;
+        email: string;
+        userCode: string;
       };
     }
   }

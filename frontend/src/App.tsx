@@ -10,6 +10,7 @@ import { useApp } from './context/AppContext.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { TeacherDashboard } from './pages/TeacherDashboard.js';
 import { StudentPortal } from './pages/StudentPortal.js';
+import { AdminDashboard } from './pages/AdminDashboard.js';
 
 // Lazy-loaded heavy pages
 const ChatPage = React.lazy(() => import('./pages/ChatPage.js').then(m => ({ default: m.ChatPage })));
@@ -34,17 +35,19 @@ const AuthenticatedApp: React.FC = () => {
             <Route
               path="/"
               element={
-                role === 'teacher'
-                  ? <Navigate to="/dashboard" replace />
-                  : <Navigate to="/portal" replace />
+                role === 'admin' ? <Navigate to="/admin" replace />
+                  : role === 'teacher' ? <Navigate to="/dashboard" replace />
+                    : <Navigate to="/portal" replace />
               }
             />
+
+            <Route path="/admin" element={role === 'admin' ? <AdminDashboard /> : <Navigate to="/" replace />} />
 
             {/* Teacher-only routes */}
             <Route
               path="/dashboard"
               element={
-                role === 'teacher' ? <TeacherDashboard /> : <Navigate to="/portal" replace />
+                role === 'teacher' ? <TeacherDashboard /> : <Navigate to="/" replace />
               }
             />
 
@@ -52,16 +55,16 @@ const AuthenticatedApp: React.FC = () => {
             <Route
               path="/portal"
               element={
-                role === 'student' ? <StudentPortal /> : <Navigate to="/dashboard" replace />
+                role === 'student' ? <StudentPortal /> : <Navigate to="/" replace />
               }
             />
 
             {/* Shared routes */}
-            <Route path="/chat" element={<ChatPage />} />
-            <Route path="/chat/:sessionId" element={<ChatPage />} />
-            <Route path="/study/:subjectId" element={<StudyPage />} />
-            <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/chat" element={role === 'admin' ? <Navigate to="/admin" replace /> : <ChatPage />} />
+            <Route path="/chat/:sessionId" element={role === 'admin' ? <Navigate to="/admin" replace /> : <ChatPage />} />
+            <Route path="/study/:subjectId" element={role === 'admin' ? <Navigate to="/admin" replace /> : <StudyPage />} />
+            <Route path="/documents" element={role === 'admin' ? <Navigate to="/admin" replace /> : <DocumentsPage />} />
+            <Route path="/pricing" element={role === 'student' ? <PricingPage /> : <Navigate to="/" replace />} />
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -70,7 +73,7 @@ const AuthenticatedApp: React.FC = () => {
       </main>
 
       {/* Global upload modal */}
-      {appState.uploadModalOpen && (
+      {role === 'teacher' && appState.uploadModalOpen && (
         <UploadModal
           onClose={() => {
             dispatch({ type: 'SET_UPLOAD_MODAL', payload: false });

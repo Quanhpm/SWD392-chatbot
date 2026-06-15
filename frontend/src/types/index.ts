@@ -1,20 +1,51 @@
 export type FileType = 'pdf' | 'docx' | 'pptx';
-export type DocumentStatus = 'uploaded' | 'processing' | 'indexed' | 'failed';
-export type UserRole = 'teacher' | 'student';
+export type DocumentStatus = 'uploaded' | 'processing' | 'pending' | 'approved' | 'rejected' | 'failed';
+export type UserRole = 'admin' | 'teacher' | 'student';
 
 export interface IUser {
   id: string;
+  _id?: string;
   username: string;
   role: UserRole;
-  enrolledSubjects: string[];
+  fullName: string;
+  email: string;
+  userCode: string;
+  isActive: boolean;
+  deactivatedAt?: string;
 }
 
 export interface ISubject {
   _id: string;
+  code: string;
   name: string;
   description?: string;
-  teacherId?: string;
+  isActive: boolean;
+  createdBy?: string;
   createdAt: string;
+}
+
+export interface ICourseClass {
+  _id: string;
+  code: string;
+  name: string;
+  subjectId: string | ISubject;
+  teacherId?: string | Pick<IUser, 'id' | '_id' | 'username' | 'fullName' | 'userCode'>;
+  status: 'draft' | 'active' | 'archived';
+  allowSelfEnrollment: boolean;
+  joinCode?: string;
+  enrolled?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IClassEnrollment {
+  _id: string;
+  classId: string;
+  studentId: IUser;
+  source: 'admin' | 'self';
+  status: 'active' | 'removed';
+  joinedAt: string;
+  removedAt?: string;
 }
 
 export interface IDocument {
@@ -32,10 +63,13 @@ export interface IDocument {
   errorMessage?: string;
   totalChunks: number;
   totalPages?: number;
-  uploadedBy?: string;
+  uploadedBy?: string | Pick<IUser, 'id' | '_id' | 'username' | 'fullName' | 'userCode'>;
   uploadedAt: string;
   processedAt?: string;
   indexedAt?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
 }
 
 export interface ICitation {
@@ -118,12 +152,11 @@ export interface IUserSubscription {
   _id: string;
   userId: string;
   planName: 'free' | 'plus' | 'pro';
-  status: 'pending' | 'active' | 'expired' | 'cancelled';
+  status: 'active' | 'expired' | 'cancelled';
   startDate: string;
   endDate: string | null;
   paymentMethod: string;
   paymentReference?: string;
-  approvedBy?: string;
   createdAt: string;
 }
 

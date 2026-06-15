@@ -12,7 +12,7 @@ const run = async () => {
     console.log('Teachers in DB:', teachers.map(t => ({ id: t._id, username: t.username })));
 
     const subjects = await SubjectModel.find({}).lean();
-    console.log('Subjects in DB:', subjects.map(s => ({ id: s._id, name: s.name, teacherId: s.teacherId })));
+    console.log('Subjects in DB:', subjects.map(s => ({ id: s._id, code: s.code, name: s.name, active: s.isActive })));
 
     await mongoose.disconnect();
   } catch (error) {

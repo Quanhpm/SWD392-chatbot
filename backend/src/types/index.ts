@@ -3,8 +3,8 @@ import type { Types } from 'mongoose';
 import type { IChunk } from '../models/Chunk.js';
 
 export type FileType = 'pdf' | 'docx' | 'pptx';
-export type DocumentStatus = 'uploaded' | 'processing' | 'indexed' | 'failed';
-export type UserRole = 'teacher' | 'student';
+export type DocumentStatus = 'uploaded' | 'processing' | 'pending' | 'approved' | 'rejected' | 'failed';
+export type UserRole = 'admin' | 'teacher' | 'student';
 
 export interface PageText {
   pageNumber: number;

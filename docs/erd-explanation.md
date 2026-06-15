@@ -1,242 +1,246 @@
-# Smart RAG Learning Platform - ERD Explanation
+# Smart RAG Learning Platform - ERD v2
 
-File ERD chính: [`docs/erd.drawio`](./erd.drawio)
+File sơ đồ chính: [`erd.drawio`](./erd.drawio)
 
-## 1. Tổng quan
+## 1. Phạm vi
 
-ERD này mô tả mô hình dữ liệu logic của hệ thống Smart RAG Learning Platform. Dự án dùng MongoDB và Mongoose, nên đây không phải ERD quan hệ thuần như MySQL/PostgreSQL, mà là ERD logic để thể hiện collection, khóa, reference, embedded subdocument và bội số quan hệ.
+ERD này phản ánh data model hiện tại sau khi bổ sung vai trò admin, lớp học, enrollment theo lớp và quy trình duyệt tài liệu.
 
-Luồng dữ liệu chính:
+Dự án dùng MongoDB và Mongoose. Vì vậy, sơ đồ thể hiện:
 
-1. Giáo viên tạo `subjects`.
-2. Giáo viên upload `documents` vào từng `subjects`.
-3. Mỗi `documents` được tách thành nhiều `chunks` để phục vụ RAG.
-4. Người học chat với tài liệu thông qua `chat_sessions`.
-5. Hệ thống theo dõi quota câu hỏi bằng `question_quotas`.
-6. Người dùng có thể đăng ký gói học qua `subscription_plans` và `user_subscriptions`.
+- Collection và `ObjectId` reference.
+- Unique index và compound unique index.
+- Embedded subdocument như message, citation, takeaway và flashcard.
+- Quan hệ logic bằng business key, cụ thể là `usersubscriptions.planName` nối với `subscriptionplans.name`.
 
-## 2. Ký hiệu trong ERD
+Tên trên sơ đồ là tên collection thực tế của Mongoose. Tên model được ghi trong ngoặc ở các collection có tên khó đọc, ví dụ `classenrollments (ClassEnrollment)`.
+
+## 2. Thay đổi so với ERD cũ
+
+| Trước đây | Phiên bản hiện tại |
+| --- | --- |
+| Chỉ có role `teacher`, `student` | Có `admin`, `teacher`, `student` |
+| Student lưu `enrolledSubjects[]` trong user | Enrollment được chuẩn hóa qua `classes` và `classenrollments` |
+| Teacher tạo subject và giữ `Subject.teacherId` | Admin tạo subject; teacher được phân công ở `classes.teacherId` |
+| Subject có password đã hash | Class có `joinCode` plaintext, random 8 ký tự |
+| Document kết thúc ở trạng thái `indexed` | Document phải đi qua `pending`, sau đó admin `approved` hoặc `rejected` |
+| Subscription có `pending` và `approvedBy` | Demo mode kích hoạt ngay; chỉ còn `active`, `expired`, `cancelled` |
+| Quyền subject lấy từ user | Quyền student lấy từ active enrollment; quyền teacher lấy từ active class assignment |
+
+## 3. Sơ đồ quan hệ rút gọn
+
+```mermaid
+erDiagram
+    USERS ||--o{ SUBJECTS : creates
+    USERS ||--o{ CLASSES : creates_or_teaches
+    SUBJECTS ||--o{ CLASSES : contains
+    CLASSES ||--o{ CLASS_ENROLLMENTS : has
+    USERS ||--o{ CLASS_ENROLLMENTS : joins
+
+    SUBJECTS ||--o{ DOCUMENTS : owns
+    USERS ||--o{ DOCUMENTS : uploads_or_reviews
+    DOCUMENTS ||--o{ CHUNKS : splits_into
+    DOCUMENTS ||--o| DOCUMENT_ASSISTS : has
+
+    USERS ||--o{ CHAT_SESSIONS : owns
+    SUBJECTS ||--o{ CHAT_SESSIONS : groups
+    DOCUMENTS ||--o{ CHAT_SESSIONS : scopes
+    USERS ||--o{ QUESTION_QUOTAS : consumes
+    DOCUMENTS ||--o{ QUESTION_QUOTAS : limits
+
+    USERS ||--o{ USER_SUBSCRIPTIONS : owns
+    SUBSCRIPTION_PLANS ||--o{ USER_SUBSCRIPTIONS : selected_by_name
+```
+
+## 4. Ký hiệu
 
 | Ký hiệu | Ý nghĩa |
 | --- | --- |
-| `PK` | Primary Key, khóa chính của collection. |
-| `FK` | Foreign Key/reference sang collection khác. Trong MongoDB thường là `ObjectId`. |
-| `UQ` | Unique constraint/index, giá trị không được trùng. |
-| `[]` | Mảng dữ liệu. |
-| `?` | Trường không bắt buộc hoặc có thể `null`. |
-| Đường liền | Quan hệ chính, bắt buộc hoặc quan hệ nghiệp vụ thường dùng. |
-| Đường nét đứt | Quan hệ phụ hoặc optional reference. |
-| Crow's foot | Thể hiện bội số quan hệ: một-nhiều, nhiều-nhiều, một-một. |
+| `PK` | Primary key của collection. |
+| `FK` | `ObjectId` reference sang collection khác. |
+| `FK*` | Reference logic qua business key, không phải `ObjectId`. |
+| `UQ` | Unique index. |
+| `?` | Optional hoặc có thể `null`. |
+| `[]` | Array hoặc embedded subdocument array. |
+| Đường nét đứt | Optional reference như `teacherId` hoặc `reviewedBy`. |
 
-## 3. Các collection
+## 5. Identity và Academic Access
 
-### 3.1. `users`
+### 5.1. `users`
 
-Lưu thông tin tài khoản người dùng.
+Lưu toàn bộ tài khoản admin, teacher và student.
 
-| Field | Ý nghĩa |
+| Field | Ghi chú |
 | --- | --- |
-| `_id` | Khóa chính của user. |
-| `username` | Tên đăng nhập, unique. |
-| `password` | Mật khẩu đã được hash. |
-| `role` | Vai trò: `teacher` hoặc `student`. |
-| `enrolledSubjects[]` | Danh sách subject mà student đã tham gia. |
-| `createdAt` | Thời điểm tạo tài khoản. |
+| `username`, `email`, `userCode` | Unique; dùng để đăng nhập hoặc định danh hồ sơ. |
+| `password` | Được hash bằng bcrypt trước khi lưu. |
+| `role` | Immutable sau khi tạo: `admin`, `teacher`, `student`. |
+| `isActive`, `deactivatedAt` | Phục vụ soft deactivate tài khoản. |
 
-Quan hệ chính:
+`users` không còn chứa `enrolledSubjects[]`.
 
-| Quan hệ | Bội số | Ý nghĩa |
-| --- | --- | --- |
-| `users` - `subjects` qua `teacherId` | 1 user tạo nhiều subject | Teacher là người sở hữu môn học. |
-| `users` - `subjects` qua `enrolledSubjects[]` | nhiều-nhiều | Student có thể enroll nhiều subject, và một subject có nhiều student. |
-| `users` - `documents` qua `uploadedBy` | 1 user upload nhiều document | Teacher upload tài liệu. |
-| `users` - `chat_sessions` qua `userId` | 1 user có nhiều chat session | Mỗi đoạn chat thuộc về một user. |
-| `users` - `question_quotas` qua `userId` | 1 user có nhiều quota record | Theo dõi số câu hỏi theo user và document. |
-| `users` - `user_subscriptions` qua `userId` | 1 user có nhiều subscription request | User là người mua hoặc yêu cầu gói. |
-| `users` - `user_subscriptions` qua `approvedBy` | 1 user duyệt nhiều subscription | User có vai trò duyệt gói, thường là teacher/admin. |
+### 5.2. `subjects`
 
-### 3.2. `subjects`
+Subject là môn học dùng chung cho nhiều lớp.
 
-Lưu thông tin môn học/lớp học.
-
-| Field | Ý nghĩa |
+| Field | Ghi chú |
 | --- | --- |
-| `_id` | Khóa chính của subject. |
-| `name` | Tên subject, unique. |
-| `description` | Mô tả subject, optional. |
-| `password` | Mật khẩu join subject, đã hash. |
-| `teacherId` | User tạo subject. |
-| `createdAt` | Thời điểm tạo subject. |
+| `code`, `name` | Unique; `code` được chuẩn hóa uppercase. |
+| `createdBy` | Admin tạo subject. |
+| `isActive` | Subject bị archive sẽ không cấp quyền truy cập mới. |
 
-Quan hệ chính:
+Subject không còn `password` và không còn teacher sở hữu trực tiếp.
 
-| Quan hệ | Bội số | Ý nghĩa |
-| --- | --- | --- |
-| `subjects` - `documents` | 1 subject có nhiều document | Tài liệu được upload theo từng subject. |
-| `subjects` - `chat_sessions` | 1 subject có nhiều chat session | Chat session nằm trong ngữ cảnh một subject. |
+### 5.3. `classes`
 
-### 3.3. `documents`
+Class là đơn vị admin dùng để phân công teacher và quản lý roster.
 
-Lưu metadata của tài liệu học tập được upload.
-
-| Field | Ý nghĩa |
+| Field | Ghi chú |
 | --- | --- |
-| `_id` | Khóa chính của document. |
-| `fileName` | Tên file lưu trong hệ thống, unique. |
-| `originalName` | Tên file gốc người dùng upload. |
-| `fileType` | Loại file: `pdf`, `docx`, `pptx`. |
-| `subjectId` | Subject chứa tài liệu. |
-| `uploadedBy` | User upload tài liệu. |
-| `chapter` | Chương của tài liệu. |
-| `status` | Trạng thái xử lý: `uploaded`, `processing`, `indexed`, `failed`. |
-| `totalChunks` | Tổng số chunk sau khi xử lý. |
-| `uploadedAt` | Thời điểm upload. |
-| `indexedAt` | Thời điểm index xong, optional. |
+| `subjectId` | Mỗi class thuộc đúng một subject. |
+| `teacherId` | Optional khi class còn `draft`; class `active` bắt buộc có teacher. |
+| `status` | `draft`, `active`, `archived`. |
+| `joinCode` | Unique, plaintext, 8 ký tự chữ/số để chia sẻ cho student. |
+| `allowSelfEnrollment` | Cho phép student tự join bằng code. |
+| `createdBy` | Admin tạo class. |
 
-Quan hệ chính:
+Một teacher có thể phụ trách nhiều class. Tài liệu vẫn dùng chung ở cấp subject, không tách riêng theo class.
 
-| Quan hệ | Bội số | Ý nghĩa |
-| --- | --- | --- |
-| `documents` - `chunks` | 1 document có nhiều chunk | Tài liệu được chia nhỏ để embedding và retrieval. |
-| `documents` - `document_assists` | 1 document có tối đa 1 assist record | Một tài liệu có một bộ takeaways/flashcards. |
-| `documents` - `chat_sessions` | 1 document có nhiều chat session | Người dùng chat theo từng document. |
-| `documents` - `question_quotas` | 1 document có nhiều quota record | Quota được tính theo cặp user-document. |
+### 5.4. `classenrollments`
 
-### 3.4. `chunks`
+Collection trung gian cho quan hệ nhiều-nhiều giữa student và class.
 
-Lưu các đoạn văn bản nhỏ được tách ra từ document để phục vụ RAG.
-
-| Field | Ý nghĩa |
+| Field | Ghi chú |
 | --- | --- |
-| `_id` | Khóa chính của chunk. |
-| `documentId` | Document chứa chunk này. |
-| `content` | Nội dung văn bản của chunk. |
-| `chunkIndex` | Thứ tự chunk trong document. |
-| `pageNumbers[]` | Các trang liên quan. |
-| `embedding[]` | Vector embedding dùng để tìm kiếm ngữ nghĩa. |
-| `metadata` | Metadata nhúng như subject, chapter, fileName. |
-| `createdAt` | Thời điểm tạo chunk. |
+| `classId`, `studentId` | Compound unique, ngăn một student bị thêm trùng vào cùng class. |
+| `source` | `admin` nếu được admin thêm; `self` nếu tự join. |
+| `status` | `active` hoặc `removed`. |
+| `removedAt` | Soft removal, giữ lịch sử roster. |
 
-Ghi chú: `chunks` là collection quan trọng nhất cho pipeline RAG vì retrieval sẽ tìm các chunk gần nhất với câu hỏi của người dùng.
+Quyền subject của student tồn tại khi có ít nhất một `ClassEnrollment.status = active` nối tới một `Class.status = active` của subject đó.
 
-### 3.5. `document_assists`
+## 6. Document Pipeline và Review
 
-Lưu nội dung hỗ trợ học tập được sinh ra từ tài liệu.
+### 6.1. `documents`
 
-| Field | Ý nghĩa |
+Metadata của file giáo viên upload.
+
+| Nhóm field | Ghi chú |
 | --- | --- |
-| `_id` | Khóa chính của assist record. |
-| `documentId` | Document liên quan, unique. |
-| `takeaways[]` | Các ý chính được sinh tự động. |
-| `flashcards[]` | Các flashcard hỏi-đáp. |
-| `createdAt` | Thời điểm tạo assist record. |
+| File | `fileName`, `originalName`, `fileType`, `fileSize`, `mimeType`. |
+| Subject snapshot | `subjectId` là khóa authorization; `subject` là tên snapshot để hiển thị/citation. |
+| Nội dung | `chapter`, `chapterTitle`, `totalChunks`, `totalPages`. |
+| Người xử lý | `uploadedBy` là teacher; `reviewedBy` là admin và chỉ có sau review. |
+| Audit | `uploadedAt`, `processedAt`, `indexedAt`, `reviewedAt`. |
+| Kết quả lỗi | `errorMessage`, `rejectionReason`. |
 
-Quan hệ `documents` - `document_assists` là một-một vì `documentId` trong `document_assists` có unique constraint.
+Document lifecycle:
 
-### 3.6. `chat_sessions`
+```text
+uploaded -> processing -> pending -> approved
+                          |       -> rejected
+                          -> failed (khi parse/embed lỗi)
+```
 
-Lưu lịch sử chat của user với một document cụ thể.
+Quy tắc chính:
 
-| Field | Ý nghĩa |
+- Student chỉ đọc/chat tài liệu `approved` của subject có enrollment hợp lệ.
+- Teacher đọc tài liệu `approved` trong subject được phân công và tài liệu `pending` do chính mình upload.
+- Admin xem toàn bộ và là role duy nhất approve/reject.
+- Reject giữ file vật lý và document metadata, nhưng xóa chunks, assist, chat session và quota liên quan.
+
+### 6.2. `chunks`
+
+Mỗi document được parse, chia thành nhiều chunk và tạo embedding.
+
+- `documentId` là reference authorization và retrieval chính.
+- `embedding[]` phục vụ semantic search.
+- `metadata.subject`, `chapter`, `chapterTitle`, `fileName` là display snapshot.
+- RAG luôn filter theo `documentId`; không dùng tên subject để cấp quyền.
+
+### 6.3. `documentassists`
+
+Cache Study Assist gồm `takeaways[]` và `flashcards[]`.
+
+`documentId` unique nên một document có tối đa một assist record. Teacher uploader có thể generate khi document `pending` hoặc `approved`; student chỉ đọc sau khi document được approve.
+
+## 7. Chat và Quota
+
+### 7.1. `chatsessions`
+
+Chat tiếp tục scoped theo document, không thêm `classId`.
+
+| Field | Ghi chú |
 | --- | --- |
-| `_id` | Khóa chính của chat session. |
-| `title` | Tiêu đề đoạn chat. |
-| `userId` | User sở hữu đoạn chat. |
-| `subjectId` | Subject đang chat. |
-| `documentId` | Document đang chat. |
-| `messages[]` | Các message của user và assistant. |
-| `createdAt` | Thời điểm tạo session. |
-| `updatedAt` | Thời điểm cập nhật cuối. |
+| `userId` | Chủ sở hữu chat session. |
+| `subjectId` | Hỗ trợ group/filter theo subject. |
+| `documentId` | Document duy nhất được dùng để retrieval. |
+| `messages[]` | Embedded message; assistant message có thể chứa `citations[]`. |
 
-Ghi chú: `messages[]` và citations được embed trong `chat_sessions`, vì đây là dữ liệu con thuộc trực tiếp một phiên chat.
+Quyền document và class được kiểm tra lại khi tạo session và mỗi lần gửi message.
 
-### 3.7. `question_quotas`
+### 7.2. `questionquotas`
 
-Theo dõi số lượng câu hỏi của user trên từng document trong một chu kỳ.
-
-| Field | Ý nghĩa |
-| --- | --- |
-| `_id` | Khóa chính của quota record. |
-| `userId` | User bị tính quota. |
-| `documentId` | Document được hỏi. |
-| `questionCount` | Số câu hỏi đã dùng. |
-| `periodStart` | Thời điểm bắt đầu chu kỳ. |
-| `periodEnd` | Thời điểm kết thúc chu kỳ, có thể `null`. |
-| `lastQuestionAt` | Lần hỏi gần nhất. |
-
-Constraint quan trọng:
+Quota vẫn tính theo document.
 
 | Constraint | Ý nghĩa |
 | --- | --- |
-| `UQ userId + documentId` | Mỗi user chỉ có một quota record cho một document trong logic hiện tại. |
+| `UQ userId + documentId` | Mỗi user có đúng một quota record cho mỗi document. |
 
-### 3.8. `subscription_plans`
+Giới hạn hiện tại:
 
-Lưu danh sách các gói đăng ký.
+| Plan | Câu hỏi / document |
+| --- | ---: |
+| Free | 5 |
+| Plus | 30 |
+| Pro | 100 |
 
-| Field | Ý nghĩa |
+## 8. Subscription Demo
+
+### 8.1. `subscriptionplans`
+
+Lưu cấu hình plan `free`, `plus`, `pro`, bao gồm giá, hạn mức, thời hạn và danh sách tính năng.
+
+### 8.2. `usersubscriptions`
+
+Lưu lịch sử plan của user.
+
+| Field | Ghi chú |
 | --- | --- |
-| `_id` | Khóa chính của plan. |
-| `name` | Tên gói: `free`, `plus`, `pro`, unique. |
-| `displayName` | Tên hiển thị. |
-| `price` | Giá gói. |
-| `questionLimit` | Số câu hỏi được phép. |
-| `durationDays` | Số ngày hiệu lực, `null` với gói vĩnh viễn. |
-| `features[]` | Danh sách tính năng. |
-| `isActive` | Gói còn đang được bán hay không. |
+| `userId` | Chủ subscription. |
+| `planName` | Business key trỏ logic tới `subscriptionplans.name`. |
+| `status` | `active`, `expired`, `cancelled`. Không còn `pending`. |
+| `paymentMethod` | `demo` trong luồng hiện tại; không có payment gateway. |
 
-### 3.9. `user_subscriptions`
+Plus/Pro được active ngay sau khi student chọn plan. Không còn `approvedBy` và không còn quy trình admin duyệt subscription.
 
-Lưu lịch sử yêu cầu/mua gói của user.
+## 9. Ma trận quan hệ
 
-| Field | Ý nghĩa |
-| --- | --- |
-| `_id` | Khóa chính của subscription record. |
-| `userId` | User yêu cầu/mua gói. |
-| `planName` | Gói được chọn: `free`, `plus`, `pro`. |
-| `status` | Trạng thái: `pending`, `active`, `expired`, `cancelled`. |
-| `startDate` | Ngày bắt đầu. |
-| `endDate` | Ngày kết thúc, có thể `null`. |
-| `paymentMethod` | Phương thức thanh toán. |
-| `paymentReference` | Mã tham chiếu thanh toán, optional. |
-| `approvedBy` | User duyệt subscription, optional. |
+| Parent | Child | Field | Bội số |
+| --- | --- | --- | --- |
+| `users` | `subjects` | `createdBy` | 1 - N |
+| `users` | `classes` | `createdBy`, `teacherId?` | 1 - N |
+| `subjects` | `classes` | `subjectId` | 1 - N |
+| `classes` | `classenrollments` | `classId` | 1 - N |
+| `users` | `classenrollments` | `studentId` | 1 - N |
+| `subjects` | `documents` | `subjectId` | 1 - N |
+| `users` | `documents` | `uploadedBy`, `reviewedBy?` | 1 - N |
+| `documents` | `chunks` | `documentId` | 1 - N |
+| `documents` | `documentassists` | `documentId` unique | 1 - 0..1 |
+| `users` | `chatsessions` | `userId` | 1 - N |
+| `subjects` | `chatsessions` | `subjectId` | 1 - N |
+| `documents` | `chatsessions` | `documentId` | 1 - N |
+| `users` | `questionquotas` | `userId` | 1 - N |
+| `documents` | `questionquotas` | `documentId` | 1 - N |
+| `users` | `usersubscriptions` | `userId` | 1 - N |
+| `subscriptionplans` | `usersubscriptions` | `name` -> `planName` | 1 - N logic |
 
-Quan hệ chính:
+## 10. Các invariant quan trọng
 
-| Quan hệ | Bội số | Ý nghĩa |
-| --- | --- | --- |
-| `subscription_plans` - `user_subscriptions` | 1 plan có nhiều subscription | Nhiều user có thể đăng ký cùng một gói. |
-| `users` - `user_subscriptions` qua `userId` | 1 user có nhiều subscription | User là người sở hữu subscription. |
-| `users` - `user_subscriptions` qua `approvedBy` | 1 user duyệt nhiều subscription | Người duyệt có thể duyệt nhiều yêu cầu. |
-
-## 4. Giải thích nét đứt `users` - `user_subscriptions`
-
-Trong ERD có hai quan hệ từ `users` sang `user_subscriptions`:
-
-| Đường nối | Field | Ý nghĩa |
-| --- | --- | --- |
-| Đường liền | `user_subscriptions.userId` | User sở hữu subscription. Đây là quan hệ chính và bắt buộc. |
-| Đường nét đứt | `user_subscriptions.approvedBy` | User duyệt subscription. Đây là quan hệ phụ và optional. |
-
-Nói ngắn gọn: nét đứt không phải là người mua gói, mà là người duyệt gói.
-
-Ví dụ:
-
-- Student A gửi yêu cầu mua gói `plus`.
-- Record trong `user_subscriptions` có `userId = Student A`.
-- Teacher B duyệt yêu cầu đó.
-- Record có thêm `approvedBy = Teacher B`.
-
-Vì `approvedBy` có dấu `?` trong model, nên field này có thể chưa tồn tại khi subscription vẫn đang `pending`. Do đó ERD dùng nét đứt để thể hiện đây là optional reference.
-
-## 5. Ghi chú thiết kế
-
-Một số điểm thiết kế đáng chú ý:
-
-1. `users.enrolledSubjects[]` tạo quan hệ nhiều-nhiều trực tiếp giữa users và subjects. Nếu muốn chuẩn hóa mạnh hơn theo relational database, có thể tách thành collection trung gian như `subject_enrollments`.
-2. `document_assists.documentId` unique nên một document chỉ có một assist record.
-3. `question_quotas` dùng unique index trên cặp `userId + documentId` để tránh tạo trùng quota record.
-4. `chunks.embedding[]` là dữ liệu vector, phục vụ tìm kiếm semantic similarity trong RAG.
-5. `chat_sessions.messages[]` là embedded subdocument vì message thuộc vòng đời của chat session.
-6. `subscription_plans.name` đang được dùng như khóa nghiệp vụ để nối sang `user_subscriptions.planName`.
-
+1. Role của user không được sửa sau khi tạo.
+2. Class `active` phải có một active teacher.
+3. `Subject.code`, `Class.code`, `Class.joinCode`, username, email và userCode là unique.
+4. Student enrollment và teacher assignment chỉ cấp quyền khi class và subject còn active.
+5. Authorization dùng `ObjectId`; các string snapshot chỉ phục vụ hiển thị/citation.
+6. Chat retrieval và quota đều scoped theo `documentId`.
+7. Rejected document không được gửi duyệt lại; teacher phải upload document record mới.

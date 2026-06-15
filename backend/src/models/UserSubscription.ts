@@ -3,12 +3,11 @@ import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 export interface IUserSubscription {
   userId: Types.ObjectId;
   planName: 'free' | 'plus' | 'pro';
-  status: 'pending' | 'active' | 'expired' | 'cancelled';
+  status: 'active' | 'expired' | 'cancelled';
   startDate: Date;
   endDate: Date | null;
   paymentMethod: string;
   paymentReference?: string;
-  approvedBy?: Types.ObjectId;
   createdAt: Date;
 }
 
@@ -25,14 +24,13 @@ const userSubscriptionSchema = new Schema<IUserSubscription>(
     status: {
       type: String,
       required: true,
-      enum: ['pending', 'active', 'expired', 'cancelled'],
-      default: 'pending',
+      enum: ['active', 'expired', 'cancelled'],
+      default: 'active',
     },
     startDate: { type: Date, required: true },
     endDate: { type: Date, default: null },
     paymentMethod: { type: String, default: 'manual' },
     paymentReference: { type: String },
-    approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     createdAt: { type: Date, default: Date.now },
   },
   { versionKey: false },
