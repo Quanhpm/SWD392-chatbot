@@ -1,5 +1,5 @@
 import api from './api.js';
-import type { ISubscriptionPlan, IUserSubscription, IQuotaStatus, IQuotaUsage } from '../types/index.js';
+import type { ISubscriptionPlan, IUserSubscription, IQuotaStatus } from '../types/index.js';
 
 export const getPlans = async (): Promise<ISubscriptionPlan[]> => {
   const response = await api.get<{ success: boolean; plans: ISubscriptionPlan[] }>('/subscriptions/plans');
@@ -21,12 +21,7 @@ export const cancelSubscription = async (): Promise<string> => {
   return response.data.message;
 };
 
-export const getQuotaUsage = async (): Promise<IQuotaUsage[]> => {
-  const response = await api.get<{ success: boolean; usage: IQuotaUsage[] }>('/subscriptions/quota');
-  return response.data.usage;
-};
-
-export const getDocumentQuota = async (documentId: string): Promise<IQuotaStatus> => {
-  const response = await api.get<{ success: boolean; quota: IQuotaStatus }>(`/subscriptions/quota/${documentId}`);
+export const getCurrentQuota = async (): Promise<IQuotaStatus> => {
+  const response = await api.get<{ success: boolean; quota: IQuotaStatus }>('/subscriptions/quota');
   return response.data.quota;
 };

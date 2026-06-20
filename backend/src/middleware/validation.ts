@@ -5,6 +5,25 @@ import { body, param, validationResult } from 'express-validator';
 
 export const uploadDocumentValidators = [
   body('subjectId').isMongoId().withMessage('A valid subjectId is required.'),
+  body('visibility')
+    .isIn(['subject-wide', 'class-restricted'])
+    .withMessage('visibility is required and must be subject-wide or class-restricted.'),
+  body('classIds')
+    .optional()
+    .custom((value) => {
+      let parsed: unknown = value;
+      if (typeof value === 'string') {
+        try {
+          parsed = JSON.parse(value);
+        } catch {
+          throw new Error('classIds must be a JSON array.');
+        }
+      }
+      if (!Array.isArray(parsed) || parsed.some((id) => typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id))) {
+        throw new Error('classIds must contain valid MongoDB ids.');
+      }
+      return true;
+    }),
   body('chapter').isInt({ min: 0 }).withMessage('Chapter must be a non-negative integer.'),
   body('chapterTitle').trim().notEmpty().withMessage('Chapter title is required.'),
 ];

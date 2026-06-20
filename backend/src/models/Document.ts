@@ -10,6 +10,8 @@ export interface IDocument {
   mimeType: string;
   subjectId: Types.ObjectId; // ref -> Subject
   subject: string;
+  visibility: 'subject-wide' | 'class-restricted';
+  classIds: Types.ObjectId[]; // empty for subject-wide; selected classes for class-restricted
   chapter: number;
   chapterTitle: string;
   status: DocumentStatus;
@@ -40,6 +42,13 @@ const documentSchema = new Schema<IDocument>(
       required: true,
     },
     subject: { type: String, required: true, trim: true },
+    visibility: {
+      type: String,
+      required: true,
+      enum: ['subject-wide', 'class-restricted'],
+      default: 'subject-wide',
+    },
+    classIds: [{ type: Schema.Types.ObjectId, ref: 'CourseClass' }],
     chapter: { type: Number, required: true, min: 0 },
     chapterTitle: { type: String, required: true, trim: true },
     status: {
@@ -69,7 +78,17 @@ const documentSchema = new Schema<IDocument>(
 );
 
 documentSchema.index({ subjectId: 1, status: 1 });
+documentSchema.index({ classIds: 1, status: 1 });
 documentSchema.index({ subject: 1, status: 1 });
 documentSchema.index({ uploadedAt: -1 });
+
+documentSchema.pre('validate', function validateVisibilityScope() {
+  if (this.visibility === 'class-restricted' && this.classIds.length === 0) {
+    throw new Error('class-restricted documents require at least one classId.');
+  }
+  if (this.visibility === 'subject-wide' && this.classIds.length > 0) {
+    this.classIds = [];
+  }
+});
 
 export const DocumentModel = model<IDocument>('Document', documentSchema);

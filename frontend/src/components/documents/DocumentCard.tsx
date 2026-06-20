@@ -10,6 +10,9 @@ interface DocumentCardProps {
 }
 
 export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, canManage = true }) => {
+  const scopeLabel = document.visibility === 'class-restricted'
+    ? `Giới hạn: ${(document.classIds ?? []).map((value) => typeof value === 'string' ? value : value.code).join(', ') || 'chưa chọn lớp'}`
+    : 'Dùng chung toàn môn';
   const getDocIcon = (type: string) => {
     if (type === 'pdf') return 'picture_as_pdf';
     if (type === 'docx') return 'description';
@@ -48,6 +51,7 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, 
               {document.originalName}
             </span>
             <span className="doc-size">{formatSize(document.fileSize)}</span>
+            <span className="doc-size">{scopeLabel}</span>
             {document.rejectionReason && <span className="doc-rejection" title={document.rejectionReason}>Lý do: {document.rejectionReason}</span>}
           </div>
         </div>
@@ -167,6 +171,8 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, 
         .doc-date-cell {
           color: var(--color-on-surface-variant);
           font-size: 13px;
+          min-width: 110px;
+          white-space: nowrap;
         }
         .delete-card-btn {
           color: var(--color-secondary);

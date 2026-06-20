@@ -13,7 +13,13 @@ import { AppError } from '../middleware/errorHandler.js';
 import { upload } from '../middleware/upload.js';
 import { mongoIdParamValidator, uploadDocumentValidators, validateRequest } from '../middleware/validation.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { assertDocumentAccess, assertSubjectAccess, getAccessibleSubjectIds } from '../services/accessService.js';
+import {
+  assertDocumentAccess,
+  assertSubjectAccess,
+  getAccessibleClassIds,
+  getAccessibleSubjectIds,
+  resolveUploadClassScope,
+} from '../services/accessService.js';
 
 export const documentRoutes = Router();
 
@@ -36,6 +42,16 @@ documentRoutes.post(
       const subject = await SubjectModel.findOne({ _id: String(req.body.subjectId), isActive: true }).lean().exec();
       if (!subject) throw new AppError('Active subject not found.', 404);
       await assertSubjectAccess(actorFrom(req), subject._id.toString());
+      const visibility = req.body.visibility as 'subject-wide' | 'class-restricted';
+      const requestedClassIds = typeof req.body.classIds === 'string'
+        ? JSON.parse(req.body.classIds) as string[]
+        : Array.isArray(req.body.classIds) ? req.body.classIds as string[] : [];
+      const classIds = await resolveUploadClassScope(
+        req.user!.id,
+        subject._id.toString(),
+        visibility,
+        requestedClassIds,
+      );
 
       const document = await documentService.createDocument({
         fileName: req.file.filename,
@@ -45,6 +61,8 @@ documentRoutes.post(
         mimeType: req.file.mimetype,
         subjectId: subject._id.toString(),
         subject: subject.name,
+        visibility,
+        classIds,
         chapter: Number(req.body.chapter),
         chapterTitle: String(req.body.chapterTitle),
         uploadedBy: req.user!.id,
@@ -62,13 +80,18 @@ documentRoutes.post(
 documentRoutes.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const actor = actorFrom(req);
+    const [accessibleSubjectIds, accessibleClassIds] = await Promise.all([
+      getAccessibleSubjectIds(actor),
+      getAccessibleClassIds(actor),
+    ]);
     const documents = await documentService.listDocuments({
       subject: typeof req.query.subject === 'string' ? req.query.subject : undefined,
       status: typeof req.query.status === 'string' ? req.query.status : undefined,
       uploadedByFilter: typeof req.query.uploadedBy === 'string' ? req.query.uploadedBy : undefined,
       userRole: actor.role,
       userId: actor.id,
-      accessibleSubjectIds: await getAccessibleSubjectIds(actor),
+      accessibleSubjectIds,
+      accessibleClassIds,
     });
     res.json({ success: true, documents });
   } catch (error) {

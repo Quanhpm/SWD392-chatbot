@@ -39,7 +39,7 @@ export const QuotaIndicator: React.FC<QuotaIndicatorProps> = ({ quota, loading }
           <div className="quota-alert-body">
             <p className="quota-alert-title">Đã hết lượt hỏi</p>
             <p className="quota-alert-desc">
-              Bạn đã sử dụng hết {quota.limit} câu hỏi cho tài liệu này trong gói <strong>{quota.planName}</strong>.
+              Bạn đã sử dụng hết {quota.limit} câu hỏi trong tháng {quota.periodKey} của gói <strong>{quota.planName}</strong>.
             </p>
           </div>
           <button
@@ -58,7 +58,7 @@ export const QuotaIndicator: React.FC<QuotaIndicatorProps> = ({ quota, loading }
               {quota.planName}
             </div>
             <span className="quota-count">
-              <strong>{quota.used}</strong>/{quota.limit} câu hỏi đã dùng cho tài liệu này
+              <strong>{quota.used}</strong>/{quota.limit} câu hỏi đã dùng trong tháng
             </span>
           </div>
           <div className="quota-bar-track">

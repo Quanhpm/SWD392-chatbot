@@ -5,10 +5,11 @@ import { Types } from 'mongoose';
 
 import { env } from '../config/environment.js';
 import { ChunkModel } from '../models/Chunk.js';
+import { CourseClassModel } from '../models/CourseClass.js';
+import { UserModel } from '../models/User.js';
 import { ChatSessionModel } from '../models/ChatSession.js';
 import { DocumentModel, type IDocument } from '../models/Document.js';
 import { DocumentAssistModel, type IDocumentAssist } from '../models/DocumentAssist.js';
-import { QuestionQuotaModel } from '../models/QuestionQuota.js';
 import type { ILLMPort } from '../ports/ILLMPort.js';
 import type { FileType } from '../types/index.js';
 import { logger } from '../utils/logger.js';
@@ -16,6 +17,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { chunkText } from './chunkingService.js';
 import type { IParserPort } from '../ports/IParserPort.js';
 import type { IEmbeddingPort } from '../ports/IEmbeddingPort.js';
+import type { EmailService } from './emailService.js';
 
 export interface CreateDocumentInput {
   fileName: string;
@@ -25,6 +27,8 @@ export interface CreateDocumentInput {
   mimeType: string;
   subjectId: string;
   subject: string;
+  visibility: IDocument['visibility'];
+  classIds: Types.ObjectId[];
   chapter: number;
   chapterTitle: string;
   uploadedBy: string; // userId of the teacher
@@ -49,6 +53,7 @@ export class DocumentService {
     private parser: IParserPort,
     private embeddingPort: IEmbeddingPort,
     private llmPort: ILLMPort,
+    private emailService: EmailService,
   ) {}
 
   /** Creates a document record for an uploaded source. */
@@ -69,6 +74,7 @@ export class DocumentService {
     userRole: 'admin' | 'teacher' | 'student';
     userId: string;
     accessibleSubjectIds: string[];
+    accessibleClassIds: string[];
     uploadedBy?: string;
   }): Promise<IDocument[]> {
     const query: Record<string, unknown> = {};
@@ -76,10 +82,23 @@ export class DocumentService {
     if (filters.userRole === 'student') {
       query.status = 'approved';
       query.subjectId = { $in: filters.accessibleSubjectIds };
+      query.$or = [
+        { visibility: { $exists: false } },
+        { visibility: 'subject-wide' },
+        { visibility: 'class-restricted', classIds: { $in: filters.accessibleClassIds } },
+      ];
     } else if (filters.userRole === 'teacher') {
       query.$or = [
         { uploadedBy: filters.userId },
-        { subjectId: { $in: filters.accessibleSubjectIds }, status: 'approved' },
+        {
+          subjectId: { $in: filters.accessibleSubjectIds },
+          status: 'approved',
+          $or: [
+            { visibility: { $exists: false } },
+            { visibility: 'subject-wide' },
+            { visibility: 'class-restricted', classIds: { $in: filters.accessibleClassIds } },
+          ],
+        },
       ];
     }
 
@@ -101,6 +120,7 @@ export class DocumentService {
     return DocumentModel.find(query)
       .populate('uploadedBy', 'username fullName userCode')
       .populate('reviewedBy', 'username fullName')
+      .populate('classIds', 'code name status')
       .sort({ uploadedAt: -1 })
       .lean()
       .exec() as unknown as Promise<IDocument[]>;
@@ -125,7 +145,6 @@ export class DocumentService {
       ChunkModel.deleteMany({ documentId: document._id }).exec(),
       DocumentAssistModel.deleteOne({ documentId: document._id }).exec(),
       ChatSessionModel.deleteMany({ documentId: document._id }).exec(),
-      QuestionQuotaModel.deleteMany({ documentId: document._id }).exec(),
     ]);
     await deleteFileIfExists(filePathForDocument(document));
     await document.deleteOne();
@@ -199,11 +218,22 @@ export class DocumentService {
     if (!document) throw new AppError('Document not found.', 404);
     if (document.status !== 'pending') throw new AppError('Only pending documents can be approved.', 400);
     if (document.totalChunks <= 0) throw new AppError('Document has no processed chunks.', 400);
+    if (document.visibility === 'class-restricted') {
+      const activeTargetCount = await CourseClassModel.countDocuments({
+        _id: { $in: document.classIds },
+        subjectId: document.subjectId,
+        status: 'active',
+      });
+      if (activeTargetCount !== document.classIds.length) {
+        throw new AppError('All target classes must still be active and belong to the document subject.', 409);
+      }
+    }
     document.status = 'approved';
     document.reviewedBy = new Types.ObjectId(adminId);
     document.reviewedAt = new Date();
     document.rejectionReason = undefined;
     await document.save();
+    await this.notifyDocumentReviewed(document, true);
     return document.toObject();
   }
 
@@ -216,7 +246,6 @@ export class DocumentService {
       ChunkModel.deleteMany({ documentId: document._id }).exec(),
       DocumentAssistModel.deleteOne({ documentId: document._id }).exec(),
       ChatSessionModel.deleteMany({ documentId: document._id }).exec(),
-      QuestionQuotaModel.deleteMany({ documentId: document._id }).exec(),
     ]);
     document.status = 'rejected';
     document.totalChunks = 0;
@@ -224,7 +253,24 @@ export class DocumentService {
     document.reviewedAt = new Date();
     document.rejectionReason = reason.trim();
     await document.save();
+    await this.notifyDocumentReviewed(document, false);
     return document.toObject();
+  }
+
+  private async notifyDocumentReviewed(document: IDocument, approved: boolean): Promise<void> {
+    const uploader = await UserModel.findById(document.uploadedBy).select('email fullName').lean().exec();
+    if (!uploader) return;
+    await this.emailService.sendDocumentReviewed(
+      { email: uploader.email, fullName: uploader.fullName },
+      {
+        documentName: document.originalName,
+        subjectName: document.subject,
+        chapter: document.chapter,
+        chapterTitle: document.chapterTitle,
+        approved,
+        reason: approved ? undefined : document.rejectionReason,
+      },
+    );
   }
 
   /** Returns cached DocumentAssist data if present. */

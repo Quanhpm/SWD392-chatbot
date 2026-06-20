@@ -7,6 +7,7 @@ import { SubjectModel } from '../models/Subject.js';
 import { UserModel } from '../models/User.js';
 import { AppError } from '../middleware/errorHandler.js';
 import type { Actor } from './accessService.js';
+import type { EmailService } from './emailService.js';
 
 const generateJoinCode = async (): Promise<string> => {
   const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -24,6 +25,8 @@ const validateTeacher = async (teacherId?: string): Promise<void> => {
 };
 
 export class ClassService {
+  constructor(private readonly emailService: EmailService) {}
+
   async listClasses(actor: Actor): Promise<unknown[]> {
     let query: Record<string, unknown> = {};
     let enrolledIds: string[] = [];
@@ -77,12 +80,17 @@ export class ClassService {
       joinCode: await generateJoinCode(),
       createdBy: adminId,
     });
+    if (courseClass.teacherId) {
+      await this.notifyTeacherAssigned(courseClass);
+    }
     return courseClass.toObject();
   }
 
   async updateClass(id: string, input: Partial<Pick<ICourseClass, 'code' | 'name' | 'status' | 'allowSelfEnrollment'>> & { teacherId?: string | null }): Promise<ICourseClass> {
     const courseClass = await CourseClassModel.findById(id).exec();
     if (!courseClass) throw new AppError('Class not found.', 404);
+    const previousTeacherId = courseClass.teacherId?.toString();
+    const previousStatus = courseClass.status;
     if (input.teacherId !== undefined) {
       await validateTeacher(input.teacherId ?? undefined);
       courseClass.teacherId = input.teacherId ? new Types.ObjectId(input.teacherId) : undefined;
@@ -103,6 +111,12 @@ export class ClassService {
     if (input.status !== undefined) courseClass.status = input.status;
     if (input.allowSelfEnrollment !== undefined) courseClass.allowSelfEnrollment = input.allowSelfEnrollment;
     await courseClass.save();
+    const currentTeacherId = courseClass.teacherId?.toString();
+    const teacherChanged = Boolean(currentTeacherId && currentTeacherId !== previousTeacherId);
+    const classActivated = Boolean(currentTeacherId && previousStatus !== 'active' && courseClass.status === 'active');
+    if (teacherChanged || classActivated) {
+      await this.notifyTeacherAssigned(courseClass);
+    }
     return courseClass.toObject();
   }
 
@@ -143,7 +157,21 @@ export class ClassService {
     ]);
     if (!courseClass) throw new AppError('Class not found.', 404);
     if (!student) throw new AppError('Active student not found.', 404);
-    await this.upsertEnrollment(classId, studentId, 'admin');
+    const newlyEnrolled = await this.upsertEnrollment(classId, studentId, 'admin');
+    if (newlyEnrolled) {
+      const subject = await SubjectModel.findById(courseClass.subjectId).select('code name').lean().exec();
+      if (subject) {
+        await this.emailService.sendStudentEnrolled(
+          { email: student.email, fullName: student.fullName },
+          {
+            classCode: courseClass.code,
+            className: courseClass.name,
+            subjectCode: subject.code,
+            subjectName: subject.name,
+          },
+        );
+      }
+    }
   }
 
   async removeStudent(classId: string, studentId: string): Promise<void> {
@@ -154,11 +182,31 @@ export class ClassService {
     if (result.modifiedCount === 0) throw new AppError('Active enrollment not found.', 404);
   }
 
-  private async upsertEnrollment(classId: string, studentId: string, source: 'admin' | 'self'): Promise<void> {
+  private async upsertEnrollment(classId: string, studentId: string, source: 'admin' | 'self'): Promise<boolean> {
+    const existing = await ClassEnrollmentModel.findOne({ classId, studentId }).select('status').lean().exec();
     await ClassEnrollmentModel.findOneAndUpdate(
       { classId, studentId },
       { status: 'active', source, joinedAt: new Date(), $unset: { removedAt: 1 } },
       { upsert: true, new: true },
     ).exec();
+    return !existing || existing.status !== 'active';
+  }
+
+  private async notifyTeacherAssigned(courseClass: ICourseClass): Promise<void> {
+    if (!courseClass.teacherId) return;
+    const [teacher, subject] = await Promise.all([
+      UserModel.findOne({ _id: courseClass.teacherId, role: 'teacher', isActive: true }).select('email fullName').lean().exec(),
+      SubjectModel.findById(courseClass.subjectId).select('code name').lean().exec(),
+    ]);
+    if (!teacher || !subject) return;
+    await this.emailService.sendTeacherAssigned(
+      { email: teacher.email, fullName: teacher.fullName },
+      {
+        classCode: courseClass.code,
+        className: courseClass.name,
+        subjectCode: subject.code,
+        subjectName: subject.name,
+      },
+    );
   }
 }

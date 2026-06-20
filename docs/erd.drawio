@@ -1,14 +1,14 @@
 <mxfile host="app.diagrams.net" agent="Codex">
-  <diagram id="smart-rag-erd-v2" name="Smart RAG ERD v2">
+  <diagram id="smart-rag-erd-v3" name="Smart RAG ERD v3">
     <mxGraphModel dx="2200" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1450" background="#F8FAFC" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
-        <mxCell id="title" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#0F172A;" value="Smart RAG Learning Platform - Database ERD v2" vertex="1">
+        <mxCell id="title" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#0F172A;" value="Smart RAG Learning Platform - Database ERD v3" vertex="1">
           <mxGeometry height="40" width="900" x="50" y="25" as="geometry" />
         </mxCell>
-        <mxCell id="subtitle" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontColor=#475569;" value="Admin-managed subjects/classes | Class-based enrollment | Document approval workflow | Document-scoped chat and quota" vertex="1">
+        <mxCell id="subtitle" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontSize=13;fontColor=#475569;" value="Class-aware document privacy | Approval workflow | Document-scoped RAG | Account-wide monthly quota" vertex="1">
           <mxGeometry height="26" width="1100" x="50" y="62" as="geometry" />
         </mxCell>
 
@@ -18,7 +18,7 @@
         <mxCell id="content_label" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;fontSize=14;fontStyle=1;fontColor=#7C3AED;" value="DOCUMENT PIPELINE &amp; REVIEW" vertex="1">
           <mxGeometry height="24" width="320" x="430" y="500" as="geometry" />
         </mxCell>
-        <mxCell id="interaction_label" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;fontSize=14;fontStyle=1;fontColor=#C2410C;" value="CHAT &amp; DOCUMENT QUOTA" vertex="1">
+        <mxCell id="interaction_label" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;fontSize=14;fontStyle=1;fontColor=#C2410C;" value="CHAT &amp; MONTHLY USER QUOTA" vertex="1">
           <mxGeometry height="24" width="300" x="430" y="1000" as="geometry" />
         </mxCell>
         <mxCell id="subscription_label" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;fontSize=14;fontStyle=1;fontColor=#15803D;" value="DEMO SUBSCRIPTION" vertex="1">
@@ -66,13 +66,13 @@
         </mxCell>
 
         <mxCell id="documents" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#7C3AED;strokeWidth=2;shadow=1;" value="" vertex="1">
-          <mxGeometry height="440" width="390" x="430" y="535" as="geometry" />
+          <mxGeometry height="470" width="390" x="430" y="535" as="geometry" />
         </mxCell>
         <mxCell id="documents_header" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=0;fillColor=#7C3AED;strokeColor=#7C3AED;strokeWidth=2;fontStyle=1;fontSize=16;fontColor=#FFFFFF;align=left;spacingLeft=16;" value="documents" vertex="1">
           <mxGeometry height="38" width="390" x="430" y="535" as="geometry" />
         </mxCell>
-        <mxCell id="documents_body" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontColor=#0F172A;spacingLeft=14;spacingTop=9;" value="PK  _id : ObjectId&#xa;UQ  fileName : string&#xa;originalName : string&#xa;fileType : pdf | docx | pptx&#xa;fileSize : number | mimeType : string&#xa;FK  subjectId : ObjectId -&gt; subjects&#xa;subject : string (display snapshot)&#xa;chapter : number | chapterTitle : string&#xa;status : uploaded | processing | pending&#xa;         approved | rejected | failed&#xa;totalChunks : number | totalPages : number?&#xa;FK  uploadedBy : ObjectId -&gt; users&#xa;FK  reviewedBy : ObjectId? -&gt; users&#xa;uploadedAt : Date | processedAt : Date?&#xa;indexedAt : Date? | reviewedAt : Date?&#xa;rejectionReason : string?&#xa;errorMessage : string?" vertex="1">
-          <mxGeometry height="402" width="390" x="430" y="573" as="geometry" />
+        <mxCell id="documents_body" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontColor=#0F172A;spacingLeft=14;spacingTop=9;" value="PK  _id : ObjectId&#xa;UQ  fileName : string&#xa;originalName : string&#xa;fileType : pdf | docx | pptx&#xa;fileSize : number | mimeType : string&#xa;FK  subjectId : ObjectId -&gt; subjects&#xa;subject : string (display snapshot)&#xa;visibility : subject-wide | class-restricted&#xa;FK[] classIds : ObjectId[] -&gt; classes&#xa;chapter : number | chapterTitle : string&#xa;status : uploaded | processing | pending&#xa;         approved | rejected | failed&#xa;totalChunks : number | totalPages : number?&#xa;FK  uploadedBy : ObjectId -&gt; users&#xa;FK  reviewedBy : ObjectId? -&gt; users&#xa;uploadedAt : Date | processedAt : Date?&#xa;indexedAt : Date? | reviewedAt : Date?&#xa;rejectionReason : string?&#xa;errorMessage : string?" vertex="1">
+          <mxGeometry height="432" width="390" x="430" y="573" as="geometry" />
         </mxCell>
 
         <mxCell id="chunks" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=0;fillColor=#FFFFFF;strokeColor=#8B5CF6;strokeWidth=2;shadow=1;" value="" vertex="1">
@@ -111,7 +111,7 @@
         <mxCell id="questionquotas_header" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=0;fillColor=#F97316;strokeColor=#F97316;strokeWidth=2;fontStyle=1;fontSize=16;fontColor=#FFFFFF;align=left;spacingLeft=16;" value="questionquotas (QuestionQuota)" vertex="1">
           <mxGeometry height="38" width="350" x="900" y="1035" as="geometry" />
         </mxCell>
-        <mxCell id="questionquotas_body" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontColor=#0F172A;spacingLeft=14;spacingTop=10;" value="PK  _id : ObjectId&#xa;UQ  userId + documentId&#xa;FK  userId : ObjectId -&gt; users&#xa;FK  documentId : ObjectId -&gt; documents&#xa;questionCount : number&#xa;periodStart : Date&#xa;periodEnd : Date | null&#xa;lastQuestionAt : Date" vertex="1">
+        <mxCell id="questionquotas_body" parent="1" style="text;html=0;strokeColor=none;fillColor=none;align=left;verticalAlign=top;fontSize=12;fontColor=#0F172A;spacingLeft=14;spacingTop=10;" value="PK  _id : ObjectId&#xa;UQ  userId + periodKey&#xa;FK  userId : ObjectId -&gt; users&#xa;periodKey : YYYY-MM (UTC)&#xa;questionCount : number&#xa;periodStart : Date&#xa;periodEnd : Date&#xa;lastQuestionAt : Date" vertex="1">
           <mxGeometry height="222" width="350" x="900" y="1073" as="geometry" />
         </mxCell>
 
@@ -161,6 +161,9 @@
         <mxCell id="rel_subject_document" edge="1" parent="1" source="subjects" target="documents" value="subjectId" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=0;exitX=0.55;exitY=1;entryX=0.42;entryY=0;startArrow=ERone;endArrow=ERmany;startFill=0;endFill=0;strokeColor=#7C3AED;strokeWidth=2;fontSize=11;labelBackgroundColor=#F8FAFC;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
+        <mxCell id="rel_class_document" edge="1" parent="1" source="classes" target="documents" value="classIds[] (optional)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=0;dashed=1;exitX=1;exitY=0.82;entryX=0;entryY=0.18;startArrow=ERzeroToMany;endArrow=ERzeroToMany;startFill=0;endFill=0;strokeColor=#7C3AED;strokeWidth=2;fontSize=10;labelBackgroundColor=#F8FAFC;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
         <mxCell id="rel_uploader_document" edge="1" parent="1" source="users" target="documents" value="uploadedBy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=0;exitX=1;exitY=0.86;entryX=0;entryY=0.25;startArrow=ERone;endArrow=ERmany;startFill=0;endFill=0;strokeColor=#64748B;strokeWidth=2;fontSize=11;labelBackgroundColor=#F8FAFC;">
           <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="400" y="415" /><mxPoint x="400" y="645" /></Array></mxGeometry>
         </mxCell>
@@ -186,10 +189,6 @@
         <mxCell id="rel_user_quota" edge="1" parent="1" source="users" target="questionquotas" value="userId" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=0;exitX=0;exitY=0.85;entryX=0;entryY=0.72;startArrow=ERone;endArrow=ERmany;startFill=0;endFill=0;strokeColor=#F97316;strokeWidth=2;fontSize=11;labelBackgroundColor=#F8FAFC;">
           <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="25" y="412" /><mxPoint x="25" y="1395" /><mxPoint x="870" y="1395" /><mxPoint x="870" y="1222" /></Array></mxGeometry>
         </mxCell>
-        <mxCell id="rel_document_quota" edge="1" parent="1" source="documents" target="questionquotas" value="documentId" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=0;exitX=1;exitY=0.95;entryX=0;entryY=0.3;startArrow=ERone;endArrow=ERmany;startFill=0;endFill=0;strokeColor=#F97316;strokeWidth=2;fontSize=11;labelBackgroundColor=#F8FAFC;">
-          <mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="860" y="953" /><mxPoint x="860" y="1113" /></Array></mxGeometry>
-        </mxCell>
-
         <mxCell id="rel_plan_subscription" edge="1" parent="1" source="subscriptionplans" target="usersubscriptions" value="planName (business key)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=0;exitX=0.65;exitY=1;entryX=0.65;entryY=0;startArrow=ERone;endArrow=ERmany;startFill=0;endFill=0;strokeColor=#16A34A;strokeWidth=2;fontSize=10;labelBackgroundColor=#F8FAFC;">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>

@@ -1,10 +1,9 @@
-import { env } from '../config/environment.js';
 import { ChatSessionModel, type IChatMessage, type IChatSession } from '../models/ChatSession.js';
 import { DocumentModel } from '../models/Document.js';
 import { SubjectModel } from '../models/Subject.js';
 import type { ChatResponse, ChatResponseWithQuota, RetrievalResult } from '../types/index.js';
 import { SubscriptionService, type QuotaStatus } from './subscriptionService.js';
-import { GENERAL_SYSTEM_PROMPT, REFUSAL_MESSAGE, SYSTEM_PROMPT } from '../utils/constants.js';
+import { REFUSAL_MESSAGE, SYSTEM_PROMPT } from '../utils/constants.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { buildCitations } from './citationService.js';
 import { retrieveRelevantChunks } from './retrievalService.js';
@@ -70,16 +69,32 @@ export class ChatService {
   }
 
   /** Lists chat sessions for the current user (no message history). */
-  async listChatSessions(userId: string): Promise<IChatSession[]> {
-    return ChatSessionModel.find({ userId, documentId: { $exists: true } })
+  async listChatSessions(userId: string, userRole: UserRole): Promise<IChatSession[]> {
+    const sessions = await ChatSessionModel.find({ userId, documentId: { $exists: true } })
       .select('-messages')
       .sort({ updatedAt: -1 })
       .lean()
       .exec();
+    const documents = await DocumentModel.find({
+      _id: { $in: sessions.map((session) => session.documentId) },
+    }).lean().exec();
+    const documentsById = new Map(documents.map((document) => [document._id.toString(), document]));
+    const visible = await Promise.all(sessions.map(async (session) => {
+      const document = documentsById.get(session.documentId.toString());
+      if (!document) return false;
+      try {
+        await assertDocumentAccess({ id: userId, role: userRole }, document, 'chat');
+        return true;
+      } catch (error) {
+        if (error instanceof AppError && error.statusCode === 403) return false;
+        throw error;
+      }
+    }));
+    return sessions.filter((_session, index) => visible[index]);
   }
 
   /** Gets one chat session with messages. Verifies ownership. Uses Cache fallback. */
-  async getChatSession(id: string, userId: string): Promise<IChatSession> {
+  async getChatSession(id: string, userId: string, userRole: UserRole): Promise<IChatSession> {
     const cacheKey = `chat_session:${id}`;
     const cachedSession = await this.cachePort.get<IChatSession>(cacheKey);
     if (cachedSession) {
@@ -89,6 +104,9 @@ export class ChatService {
       if (!cachedSession.documentId) {
         throw new AppError('This chat session is no longer compatible. Please start a new document chat.', 400);
       }
+      const document = await DocumentModel.findById(cachedSession.documentId).lean().exec();
+      if (!document) throw new AppError('Document associated with this session no longer exists.', 404);
+      await assertDocumentAccess({ id: userId, role: userRole }, document, 'chat');
       return cachedSession;
     }
 
@@ -102,6 +120,9 @@ export class ChatService {
     if (!session.documentId) {
       throw new AppError('This chat session is no longer compatible. Please start a new document chat.', 400);
     }
+    const document = await DocumentModel.findById(session.documentId).lean().exec();
+    if (!document) throw new AppError('Document associated with this session no longer exists.', 404);
+    await assertDocumentAccess({ id: userId, role: userRole }, document, 'chat');
 
     await this.cachePort.set(cacheKey, session, 1800); // 30 minutes TTL
     return session;
@@ -160,17 +181,14 @@ export class ChatService {
 
     // Quota check for students — teachers have unlimited questions
     let quotaStatus: QuotaStatus | undefined;
+    let reservedQuotaPeriodKey: string | null = null;
     if (userRole === 'student') {
-      quotaStatus = await this.subscriptionService.checkQuota(userId, session.documentId.toString());
-      if (!quotaStatus.allowed) {
-        throw new AppError(
-          `Question limit reached (${quotaStatus.used}/${quotaStatus.limit} for ${quotaStatus.planName} plan) in this document. Upgrade your plan for more questions.`,
-          403,
-        );
-      }
+      quotaStatus = await this.subscriptionService.reserveQuota(userId);
+      reservedQuotaPeriodKey = quotaStatus.periodKey;
     }
 
-    const subjectName = subject.name; // matches chunk metadata.subject (string field)
+    try {
+      const subjectName = subject.name; // matches chunk metadata.subject (string field)
 
     const priorMessages: IChatMessage[] = session.messages.slice(-6).map((message) => ({
       role: message.role,
@@ -197,40 +215,6 @@ export class ChatService {
     );
 
     if (relevantChunks.length === 0) {
-      if (env.allowGeneralQuestions) {
-        try {
-          const content =
-            (await this.llmPort.callLLM(GENERAL_SYSTEM_PROMPT, priorMessages, userMessage)) ||
-            'I could not generate a response.';
-          const response: ChatResponse = { content, citations: [] };
-          session.messages.push({
-            role: 'assistant',
-            content: response.content,
-            citations: [],
-            createdAt: new Date(),
-          });
-          await this.saveAndCacheSession(session);
-
-          // Increment quota for students after successful response
-          if (userRole === 'student') {
-            await this.subscriptionService.incrementQuota(userId, session.documentId.toString());
-            quotaStatus = await this.subscriptionService.checkQuota(userId, session.documentId.toString());
-          }
-
-          return { ...response, quotaStatus };
-        } catch (error) {
-          const message = error instanceof Error ? error.message : 'Unknown LLM chat error';
-          session.messages.push({
-            role: 'assistant',
-            content: `Unable to generate a response: ${message}`,
-            citations: [],
-            createdAt: new Date(),
-          });
-          await this.saveAndCacheSession(session);
-          throw new Error(`LLM chat completion failed: ${message}`);
-        }
-      }
-
       const response: ChatResponse = { content: REFUSAL_MESSAGE, citations: [] };
       session.messages.push({
         role: 'assistant',
@@ -241,8 +225,7 @@ export class ChatService {
       await this.saveAndCacheSession(session);
 
       if (userRole === 'student') {
-        await this.subscriptionService.incrementQuota(userId, session.documentId.toString());
-        quotaStatus = await this.subscriptionService.checkQuota(userId, session.documentId.toString());
+        quotaStatus = await this.subscriptionService.checkQuota(userId);
       }
 
       return { ...response, quotaStatus };
@@ -260,7 +243,7 @@ Question: ${userMessage}`;
     try {
       const content =
         (await this.llmPort.callLLM(
-          env.allowGeneralQuestions ? GENERAL_SYSTEM_PROMPT : SYSTEM_PROMPT,
+          SYSTEM_PROMPT,
           priorMessages,
           currentPrompt,
         )) || REFUSAL_MESSAGE;
@@ -268,10 +251,8 @@ Question: ${userMessage}`;
       session.messages.push({ role: 'assistant', content, citations, createdAt: new Date() });
       await this.saveAndCacheSession(session);
 
-      // Increment quota for students after successful response
       if (userRole === 'student') {
-        await this.subscriptionService.incrementQuota(userId, session.documentId.toString());
-        quotaStatus = await this.subscriptionService.checkQuota(userId, session.documentId.toString());
+        quotaStatus = await this.subscriptionService.checkQuota(userId);
       }
 
       return { content, citations, quotaStatus };
@@ -285,6 +266,10 @@ Question: ${userMessage}`;
       });
       await this.saveAndCacheSession(session);
       throw new Error(`LLM chat completion failed: ${message}`);
+    }
+    } catch (error) {
+      if (reservedQuotaPeriodKey) await this.subscriptionService.releaseQuota(userId, reservedQuotaPeriodKey);
+      throw error;
     }
   }
 

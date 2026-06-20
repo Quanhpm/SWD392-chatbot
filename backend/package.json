@@ -8,7 +8,9 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migrate:admin-classes": "tsx src/utils/migrateAdminClasses.ts",
-    "migrate:admin-classes:dry": "tsx src/utils/migrateAdminClasses.ts --dry-run"
+    "migrate:admin-classes:dry": "tsx src/utils/migrateAdminClasses.ts --dry-run",
+    "migrate:privacy-quota": "tsx src/utils/migratePrivacyAndMonthlyQuota.ts",
+    "email:test": "tsx src/utils/testEmail.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -20,6 +22,7 @@
     "mammoth": "^1.8.0",
     "mongoose": "^8.9.5",
     "multer": "^1.4.5-lts.1",
+    "nodemailer": "^9.0.1",
     "officeparser": "^5.1.1",
     "pdf-parse": "^1.1.1",
     "redis": "^5.12.1"
@@ -31,6 +34,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.5",
+    "@types/nodemailer": "^8.0.1",
     "@types/pdf-parse": "^1.1.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

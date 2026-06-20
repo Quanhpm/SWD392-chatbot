@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext.js';
 import { ChatProvider, useChat } from '../context/ChatContext.js';
 import { useChatSession } from '../hooks/useChatSession.js';
 import { getDocuments, getDocumentChunks } from '../services/documentApi.js';
-import { getDocumentQuota } from '../services/subscriptionApi.js';
+import { getCurrentQuota } from '../services/subscriptionApi.js';
 import { ChatMessageList } from '../components/chat/ChatMessageList.js';
 import { ChatInput } from '../components/chat/ChatInput.js';
 import { QuotaIndicator } from '../components/chat/QuotaIndicator.js';
@@ -247,22 +247,22 @@ const StudyPageInner: React.FC = () => {
   const [assistError, setAssistError] = useState<string | null>(null);
 
   // Layout Layout Sidebar state
-  const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
-  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
+  const [leftSidebarOpen, setLeftSidebarOpen] = useState(() => window.innerWidth >= 768);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [chatWidth, setChatWidth] = useState(400); // Resizable right sidebar default
   const [isResizing, setIsResizing] = useState(false);
 
   const dividerRef = useRef<HTMLDivElement>(null);
   const chatPaneRef = useRef<HTMLDivElement>(null);
 
-  const refreshQuota = useCallback(async (documentId: string) => {
+  const refreshQuota = useCallback(async () => {
     if (authState.user?.role !== 'student') return;
 
     try {
       setQuotaLoading(true);
-      setQuota(await getDocumentQuota(documentId));
+      setQuota(await getCurrentQuota());
     } catch (err) {
-      console.error('Failed to load document quota:', err);
+      console.error('Failed to load monthly quota:', err);
     } finally {
       setQuotaLoading(false);
     }
@@ -320,7 +320,7 @@ const StudyPageInner: React.FC = () => {
     setAssistError(null);
     appDispatch({ type: 'SET_ACTIVE_SESSION', payload: null });
     chatDispatch({ type: 'CLEAR_CHAT' });
-    void refreshQuota(doc._id);
+    void refreshQuota();
     try {
       const data = await getDocumentChunks(doc._id);
       setChunks(data);
@@ -422,7 +422,7 @@ const StudyPageInner: React.FC = () => {
     if (nextQuota) {
       setQuota(nextQuota);
     } else if (authState.user?.role === 'student') {
-      await refreshQuota(selectedDoc._id);
+      await refreshQuota();
     }
   };
 
@@ -1909,6 +1909,60 @@ const StudyPageInner: React.FC = () => {
             padding: 24px 16px !important;
           }
         }
+
+        @media (max-width: 900px) {
+          .study-left-pane,
+          .study-right-pane {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            z-index: 45;
+            box-shadow: var(--shadow-xl);
+          }
+          .study-left-pane { left: 0; }
+          .study-left-pane.open { width: min(300px, calc(100vw - 48px)); }
+          .study-right-pane { right: 0; }
+          .study-right-pane.open { width: min(400px, 100vw) !important; }
+          .study-center-pane { width: 100%; }
+          .resizable-divider { display: none; }
+          .reader-header { padding: 10px 14px; }
+          .reader-header-tabs { width: 100%; }
+          .tab-btn { flex: 1; justify-content: center; }
+          .editor-toolbar { position: static; }
+        }
+
+        /* Compact workspace refresh */
+        .study-left-pane { background: #fff; }
+        .study-left-pane.open { width: 270px; }
+        .pane-header { min-height: 50px; padding: 12px 14px; background: #fff; }
+        .pane-body { padding: 14px 12px; gap: 18px; }
+        .subject-meta { padding: 12px; border-radius: 9px; background: #f8fafc; }
+        .subject-name { color: var(--color-on-surface); }
+        .chapter-list { gap: 4px; }
+        .chapter-item { gap: 10px; padding: 9px 10px; border-width: 1px; border-radius: 8px; background: transparent; }
+        .chapter-item:hover { background: #f8fafc; }
+        .chapter-item.active { border-color: #dbeafe; background: #eff6ff; }
+        .reader-header { min-height: 68px; padding: 12px 20px; gap: 12px; }
+        .reader-header-tabs { border-radius: 9px; }
+        .tab-btn { padding: 7px 11px; border-radius: 7px; }
+        .google-docs-editor-container { gap: 10px; padding: 8px 12px 24px; }
+        .editor-toolbar { max-width: 900px; padding: 7px 10px; border-radius: 10px; box-shadow: none; }
+        .toolbar-select, .toolbar-btn { border-radius: 7px; }
+        .editor-mode-toggle { padding: 6px 10px; border-width: 1px; border-radius: 8px; }
+        .editor-ruler-container, .editor-paper-container, .pdf-viewer-container, .office-doc-banner { max-width: 900px; }
+        .editor-paper { min-height: 820px; padding: 52px 60px; border-width: 1px; border-radius: 10px; box-shadow: var(--shadow-sm); }
+        .editor-paper.content-editable { box-shadow: 0 0 0 3px rgb(37 99 235 / .1); }
+        .reopen-left-btn, .reopen-right-btn { padding: 7px 10px; border-color: #dbeafe; border-radius: 8px; background: #fff; box-shadow: var(--shadow-sm); }
+        .reopen-left-btn:hover, .reopen-right-btn:hover { transform: none; background: #eff6ff; }
+        .study-right-pane .chat-header { min-height: 50px; padding: 11px 14px; gap: 9px; }
+        .study-right-pane .chat-header .header-icon { font-size: 20px; }
+        .assist-placeholder-screen, .takeaway-card, .skeleton-card { border-radius: 10px; box-shadow: none; }
+        .generate-assist-btn { border-radius: 8px; background: var(--color-primary); box-shadow: none; }
+        .generate-assist-btn:hover { box-shadow: none; transform: none; background: var(--color-primary-container); }
+        .flashcard-wrapper, .card-front, .card-back { border-radius: 10px; }
+        .pdf-iframe { border-width: 1px; border-radius: 10px; box-shadow: var(--shadow-sm); }
+        .office-doc-banner { padding: 12px 14px; border-radius: 9px; background: #f8fafc; }
+        .banner-download-btn { border-radius: 8px; }
 
 
 

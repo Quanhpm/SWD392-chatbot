@@ -1,10 +1,10 @@
-# Smart RAG Learning Platform - ERD v2
+# Smart RAG Learning Platform - ERD v3
 
 File sơ đồ chính: [`erd.drawio`](./erd.drawio)
 
 ## 1. Phạm vi
 
-ERD này phản ánh data model hiện tại sau khi bổ sung vai trò admin, lớp học, enrollment theo lớp và quy trình duyệt tài liệu.
+ERD này phản ánh data model hiện tại sau khi bổ sung vai trò admin, enrollment theo lớp, class-aware document privacy, quy trình duyệt và quota user theo tháng.
 
 Dự án dùng MongoDB và Mongoose. Vì vậy, sơ đồ thể hiện:
 
@@ -38,6 +38,7 @@ erDiagram
     USERS ||--o{ CLASS_ENROLLMENTS : joins
 
     SUBJECTS ||--o{ DOCUMENTS : owns
+    CLASSES }o--o{ DOCUMENTS : visibility_scope
     USERS ||--o{ DOCUMENTS : uploads_or_reviews
     DOCUMENTS ||--o{ CHUNKS : splits_into
     DOCUMENTS ||--o| DOCUMENT_ASSISTS : has
@@ -46,7 +47,6 @@ erDiagram
     SUBJECTS ||--o{ CHAT_SESSIONS : groups
     DOCUMENTS ||--o{ CHAT_SESSIONS : scopes
     USERS ||--o{ QUESTION_QUOTAS : consumes
-    DOCUMENTS ||--o{ QUESTION_QUOTAS : limits
 
     USERS ||--o{ USER_SUBSCRIPTIONS : owns
     SUBSCRIPTION_PLANS ||--o{ USER_SUBSCRIPTIONS : selected_by_name
@@ -104,7 +104,7 @@ Class là đơn vị admin dùng để phân công teacher và quản lý roster
 | `allowSelfEnrollment` | Cho phép student tự join bằng code. |
 | `createdBy` | Admin tạo class. |
 
-Một teacher có thể phụ trách nhiều class. Tài liệu vẫn dùng chung ở cấp subject, không tách riêng theo class.
+Một teacher có thể phụ trách nhiều class. Document luôn thuộc một subject và có thêm phạm vi hiển thị: dùng chung toàn môn hoặc giới hạn cho một hay nhiều class cụ thể.
 
 ### 5.4. `classenrollments`
 
@@ -129,6 +129,7 @@ Metadata của file giáo viên upload.
 | --- | --- |
 | File | `fileName`, `originalName`, `fileType`, `fileSize`, `mimeType`. |
 | Subject snapshot | `subjectId` là khóa authorization; `subject` là tên snapshot để hiển thị/citation. |
+| Phạm vi | `visibility = subject-wide` thì `classIds = []`; `visibility = class-restricted` thì `classIds` phải chứa ít nhất một lớp active cùng subject do uploader phụ trách. |
 | Nội dung | `chapter`, `chapterTitle`, `totalChunks`, `totalPages`. |
 | Người xử lý | `uploadedBy` là teacher; `reviewedBy` là admin và chỉ có sau review. |
 | Audit | `uploadedAt`, `processedAt`, `indexedAt`, `reviewedAt`. |
@@ -144,10 +145,11 @@ uploaded -> processing -> pending -> approved
 
 Quy tắc chính:
 
-- Student chỉ đọc/chat tài liệu `approved` của subject có enrollment hợp lệ.
-- Teacher đọc tài liệu `approved` trong subject được phân công và tài liệu `pending` do chính mình upload.
+- Student chỉ đọc/chat tài liệu `approved`. Với `subject-wide`, cần enrollment active trong một lớp active của subject; với `class-restricted`, enrollment phải thuộc ít nhất một class trong `classIds`.
+- Teacher đọc tài liệu `subject-wide` trong subject được phân công, tài liệu `class-restricted` của lớp mình phụ trách và mọi tài liệu do chính mình upload.
 - Admin xem toàn bộ và là role duy nhất approve/reject.
-- Reject giữ file vật lý và document metadata, nhưng xóa chunks, assist, chat session và quota liên quan.
+- Reject giữ file vật lý và document metadata, nhưng xóa chunks, assist và chat session liên quan; quota tháng của user không bị thay đổi.
+- Khi enrollment/class assignment không còn active, lịch sử chat của tài liệu restricted cũng không còn đọc được.
 
 ### 6.2. `chunks`
 
@@ -157,6 +159,7 @@ Mỗi document được parse, chia thành nhiều chunk và tạo embedding.
 - `embedding[]` phục vụ semantic search.
 - `metadata.subject`, `chapter`, `chapterTitle`, `fileName` là display snapshot.
 - RAG luôn filter theo `documentId`; không dùng tên subject để cấp quyền.
+- LLM chỉ dùng context từ các chunks này; không có kết quả đạt threshold thì trả refusal message, không fallback sang kiến thức chung.
 
 ### 6.3. `documentassists`
 
@@ -177,23 +180,26 @@ Chat tiếp tục scoped theo document, không thêm `classId`.
 | `documentId` | Document duy nhất được dùng để retrieval. |
 | `messages[]` | Embedded message; assistant message có thể chứa `citations[]`. |
 
-Quyền document và class được kiểm tra lại khi tạo session và mỗi lần gửi message.
+Quyền document và class được kiểm tra lại khi tạo session, liệt kê/mở lịch sử và mỗi lần gửi message.
 
 ### 7.2. `questionquotas`
 
-Quota vẫn tính theo document.
+Quota tính trên tổng số câu hỏi của user trong một tháng UTC, không phụ thuộc subject, class, document hoặc cách giảng viên chia file.
 
 | Constraint | Ý nghĩa |
 | --- | --- |
-| `UQ userId + documentId` | Mỗi user có đúng một quota record cho mỗi document. |
+| `UQ userId + periodKey` | Mỗi user có tối đa một quota record cho mỗi tháng (`YYYY-MM`). |
+| `periodStart`, `periodEnd` | Biên tháng UTC dạng nửa mở: `[periodStart, periodEnd)`. |
 
 Giới hạn hiện tại:
 
-| Plan | Câu hỏi / document |
+| Plan | Câu hỏi / tháng |
 | --- | ---: |
-| Free | 5 |
-| Plus | 30 |
-| Pro | 100 |
+| Free | 50 |
+| Plus | 300 |
+| Pro | 1000 |
+
+Đổi gói giữa tháng không reset `questionCount`; chỉ thay đổi limit hiệu lực. Mỗi request của student reserve quota bằng cập nhật nguyên tử trước khi chạy AI và được hoàn lại nếu pipeline thất bại. Vì vậy gửi request song song không thể vượt limit.
 
 ## 8. Subscription Demo
 
@@ -224,6 +230,7 @@ Plus/Pro được active ngay sau khi student chọn plan. Không còn `approved
 | `classes` | `classenrollments` | `classId` | 1 - N |
 | `users` | `classenrollments` | `studentId` | 1 - N |
 | `subjects` | `documents` | `subjectId` | 1 - N |
+| `classes` | `documents` | `classIds[]` | N - N optional |
 | `users` | `documents` | `uploadedBy`, `reviewedBy?` | 1 - N |
 | `documents` | `chunks` | `documentId` | 1 - N |
 | `documents` | `documentassists` | `documentId` unique | 1 - 0..1 |
@@ -231,7 +238,6 @@ Plus/Pro được active ngay sau khi student chọn plan. Không còn `approved
 | `subjects` | `chatsessions` | `subjectId` | 1 - N |
 | `documents` | `chatsessions` | `documentId` | 1 - N |
 | `users` | `questionquotas` | `userId` | 1 - N |
-| `documents` | `questionquotas` | `documentId` | 1 - N |
 | `users` | `usersubscriptions` | `userId` | 1 - N |
 | `subscriptionplans` | `usersubscriptions` | `name` -> `planName` | 1 - N logic |
 
@@ -242,5 +248,8 @@ Plus/Pro được active ngay sau khi student chọn plan. Không còn `approved
 3. `Subject.code`, `Class.code`, `Class.joinCode`, username, email và userCode là unique.
 4. Student enrollment và teacher assignment chỉ cấp quyền khi class và subject còn active.
 5. Authorization dùng `ObjectId`; các string snapshot chỉ phục vụ hiển thị/citation.
-6. Chat retrieval và quota đều scoped theo `documentId`.
-7. Rejected document không được gửi duyệt lại; teacher phải upload document record mới.
+6. Chat retrieval luôn scoped theo `documentId`; quota scoped theo `userId + periodKey`.
+7. `class-restricted` bắt buộc có ít nhất một class cùng subject và uploader phải đang phụ trách class đó tại thời điểm upload.
+8. Mọi thao tác document, kể cả file/chunks/assist và chat history, đều kiểm tra lại visibility theo enrollment/assignment hiện tại.
+9. Đổi gói không reset quota trong tháng.
+10. Rejected document không được gửi duyệt lại; teacher phải upload document record mới.

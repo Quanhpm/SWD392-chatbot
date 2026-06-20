@@ -1,5 +1,6 @@
 export type FileType = 'pdf' | 'docx' | 'pptx';
 export type DocumentStatus = 'uploaded' | 'processing' | 'pending' | 'approved' | 'rejected' | 'failed';
+export type DocumentVisibility = 'subject-wide' | 'class-restricted';
 export type UserRole = 'admin' | 'teacher' | 'student';
 
 export interface IUser {
@@ -57,6 +58,8 @@ export interface IDocument {
   mimeType: string;
   subjectId?: string;
   subject: string;
+  visibility: DocumentVisibility;
+  classIds: Array<string | Pick<ICourseClass, '_id' | 'code' | 'name' | 'status'>>;
   chapter: number;
   chapterTitle: string;
   status: DocumentStatus;
@@ -166,20 +169,7 @@ export interface IQuotaStatus {
   limit: number;
   planName: string;
   remaining: number;
-}
-
-export interface IQuotaUsage {
-  _id: string;
-  userId: string;
-  documentId: {
-    _id: string;
-    originalName: string;
-    subject: string;
-    chapter: number;
-    chapterTitle: string;
-  };
-  questionCount: number;
+  periodKey: string;
   periodStart: string;
-  periodEnd: string | null;
-  lastQuestionAt: string;
+  periodEnd: string;
 }

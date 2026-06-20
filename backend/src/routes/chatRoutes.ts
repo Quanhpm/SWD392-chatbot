@@ -48,7 +48,7 @@ chatRoutes.post(
  */
 chatRoutes.get('/sessions', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const sessions = await chatService.listChatSessions(req.user!.id);
+    const sessions = await chatService.listChatSessions(req.user!.id, req.user!.role);
     res.json({ success: true, sessions });
   } catch (error) {
     next(error);
@@ -66,7 +66,7 @@ chatRoutes.get(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params as { id: string };
-      const session = await chatService.getChatSession(id, req.user!.id);
+      const session = await chatService.getChatSession(id, req.user!.id, req.user!.role);
       res.json({ success: true, session });
     } catch (error) {
       next(error);

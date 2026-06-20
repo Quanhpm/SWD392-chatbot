@@ -12,7 +12,7 @@ interface ChatInputProps {
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
   disabled = false,
-  placeholder = 'Ask a question about the course materials...',
+  placeholder = 'Đặt câu hỏi về tài liệu đang chọn...',
 }) => {
   const { state: appState, dispatch: appDispatch } = useApp();
   const { state: authState } = useAuth();
@@ -163,10 +163,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           <span className="sources-status flex-center">
             <Icon name="menu_book" style={{ fontSize: '16px', color: 'var(--color-primary)' }} />
             {activeDocsCount === 0 ? (
-              <span className="sources-count text-secondary">No active sources</span>
+              <span className="sources-count text-secondary">Chưa có nguồn</span>
             ) : (
               <span className="sources-count text-primary">
-                {activeDocsCount} {activeDocsCount === 1 ? 'source' : 'sources'} active
+                {activeDocsCount} tài liệu khả dụng
               </span>
             )}
           </span>
@@ -187,9 +187,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         .chat-input-container {
           background-color: var(--color-surface-container-lowest);
           border: 1px solid var(--color-outline-variant);
-          border-radius: var(--radius-2xl);
-          padding: 8px 12px;
-          margin: 0 auto 24px auto;
+          border-radius: var(--radius-xl);
+          padding: 7px 10px;
+          margin: 0 auto 18px;
           width: 90%;
           max-width: var(--chat-max-width);
           display: flex;
@@ -200,7 +200,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
         .chat-input-container:focus-within {
           border-color: var(--color-primary);
-          box-shadow: var(--shadow-lg);
+          box-shadow: 0 0 0 3px rgb(37 99 235 / .1);
         }
 
         .textarea-wrapper {
@@ -214,7 +214,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           outline: none;
           resize: none;
           padding: 8px 4px;
-          font: var(--text-body-lg);
+          font: var(--text-body-md);
           color: var(--color-on-surface);
           line-height: 1.5;
           min-height: 48px;
@@ -247,7 +247,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         .action-btn {
           width: 36px;
           height: 36px;
-          border-radius: var(--radius-full);
+          border-radius: var(--radius-lg);
           color: var(--color-on-surface-variant);
           transition: background-color var(--transition-fast), color var(--transition-fast);
         }

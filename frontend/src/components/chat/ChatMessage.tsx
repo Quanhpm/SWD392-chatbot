@@ -64,12 +64,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
           .user-bubble {
             background-color: var(--color-surface-container-high);
             color: var(--color-on-surface);
-            border-radius: 16px 4px 16px 16px;
-            padding: 14px 20px;
+            border-radius: 10px 4px 10px 10px;
+            padding: 11px 15px;
             max-width: 80%;
             font: var(--text-body-md);
             word-wrap: break-word;
-            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--color-outline-variant);
           }
         `}</style>
       </div>
@@ -84,7 +84,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         <div className="assistant-avatar flex-center">
           <Icon name="psychology" style={{ fontSize: '16px', color: 'var(--color-primary)' }} />
         </div>
-        <span className="assistant-name">Research Assistant</span>
+        <span className="assistant-name">Trợ lý tài liệu</span>
       </div>
 
       {/* Bubble Content Box */}
@@ -130,11 +130,10 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         }
         .assistant-content-box {
           background-color: var(--color-surface);
-          padding: 24px;
-          border-radius: 4px 16px 16px 16px;
-          border: 1px solid rgba(114, 119, 133, 0.2);
+          padding: 18px;
+          border-radius: 4px 10px 10px 10px;
+          border: 1px solid var(--color-outline-variant);
           max-width: 95%;
-          box-shadow: var(--shadow-sm);
           width: 100%;
         }
 

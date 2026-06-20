@@ -6,7 +6,6 @@ import { DocumentModel } from '../models/Document.js';
 import { ChunkModel } from '../models/Chunk.js';
 import { ChatSessionModel } from '../models/ChatSession.js';
 import { DocumentAssistModel } from '../models/DocumentAssist.js';
-import { QuestionQuotaModel } from '../models/QuestionQuota.js';
 import { GeminiEmbeddingAdapter } from '../adapters/GeminiEmbeddingAdapter.js';
 import { CourseClassModel } from '../models/CourseClass.js';
 
@@ -108,7 +107,6 @@ const run = async () => {
     await ChunkModel.deleteMany({ documentId: { $in: oldDocIds } }).exec();
     await DocumentAssistModel.deleteMany({ documentId: { $in: oldDocIds } }).exec();
     await ChatSessionModel.deleteMany({ documentId: { $in: oldDocIds } }).exec();
-    await QuestionQuotaModel.deleteMany({ documentId: { $in: oldDocIds } }).exec();
     await DocumentModel.deleteMany({ subject: subjectName }).exec();
     console.log('🧹 Cleaned up old documents and chunks for this course');
 

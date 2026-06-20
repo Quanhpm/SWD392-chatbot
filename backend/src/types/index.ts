@@ -60,5 +60,8 @@ export interface ChatResponseWithQuota extends ChatResponse {
     limit: number;
     planName: string;
     remaining: number;
+    periodKey: string;
+    periodStart: Date;
+    periodEnd: Date;
   };
 }

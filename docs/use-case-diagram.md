@@ -1,46 +1,41 @@
 # Use Case Diagram - Smart RAG Learning Platform
 
-This diagram describes the current Teacher/Student business flow of the project.
-The app is no longer modeled as a single-user demo: teachers own subjects and
-uploaded documents, while students enroll in subjects, read documents, and chat
-with the chatbot inside one selected document.
+Tài liệu này mô tả workflow hiện tại sau khi bổ sung quản trị lớp, duyệt tài liệu, class privacy và quota tháng.
 
 ## Actors
 
-| Actor | Description |
+| Actor | Trách nhiệm |
 | --- | --- |
-| Teacher | Creates subjects, shares subject passwords, uploads/manages their own documents, and approves paid subscription requests. |
-| Student | Enrolls in subjects, reads indexed documents, uses study assist, chats with the selected document, and requests plan upgrades. |
-| Gemini API | Generates embeddings, study assist content, and chat answers. |
-| MongoDB | Stores users, subjects, documents, chunks, chat sessions, subscriptions, and document-scoped quotas. |
+| Admin | Quản lý tài khoản, môn, lớp, roster và duyệt/từ chối tài liệu. |
+| Teacher | Quản lý lớp được phân công, upload tài liệu theo phạm vi và tạo Study Assist. |
+| Student | Tham gia lớp, đọc tài liệu đúng phạm vi, chat và chọn gói. |
+| Gemini API | Tạo embedding, Study Assist và câu trả lời RAG. |
+| MongoDB | Lưu dữ liệu học vụ, tài liệu, chunks, chat, subscription và quota tháng. |
 
 ## Main Use Cases
 
-| Group | Use Case | Description |
+| Nhóm | Use case | Quy tắc chính |
 | --- | --- | --- |
-| Subject and Document Management | Create subject | Teacher creates a subject with a password for student enrollment. |
-| Subject and Document Management | Upload document | Teacher uploads PDF, DOCX, or PPTX files to a subject they created. |
-| Subject and Document Management | Index document | System parses text, chunks content, generates embeddings, and stores indexed chunks. |
-| Subject and Document Management | Delete own subject/document | Teacher can delete only subjects/documents they own; document deletion also removes related chunks, assist data, chat sessions, and quota records. |
-| Learning | Enroll in subject | Student enters the subject password to join. |
-| Learning | Read enrolled documents | Student can read only documents from enrolled subjects. |
-| Learning | View/generate study assist | Student can view cached study assist or request generated takeaways/flashcards. |
-| Document-scoped Chat | Start document chat | User selects one indexed document and starts a chat session scoped to that document. |
-| Document-scoped Chat | Ask question | Student question is checked against quota, then answered using chunks from the selected document only. |
-| Subscription | Request upgrade | Student requests Plus/Pro when more questions are needed. |
-| Subscription | Approve/reject upgrade | Teacher/admin approver activates or rejects pending paid subscriptions. |
+| Admin | Quản lý môn và lớp | Class thuộc một subject, có một teacher phụ trách và roster riêng. |
+| Admin | Duyệt tài liệu | Admin xem file, metadata và phạm vi lớp trước khi approve/reject. |
+| Teacher | Upload tài liệu | Chọn `subject-wide` hoặc `class-restricted`; lớp được chọn phải active, cùng subject và do teacher phụ trách. |
+| Student | Tham gia lớp | Enrollment chỉ cấp quyền khi enrollment, class và subject đều active. |
+| Learning | Đọc tài liệu | Chỉ tài liệu approved và đúng phạm vi class mới xuất hiện. |
+| Learning | Study Assist | Teacher uploader tạo; student chỉ đọc khi tài liệu approved và đúng phạm vi. |
+| Chat | Chat theo document | Retrieval chỉ dùng chunks của document được chọn; quyền được kiểm tra lại khi tạo, mở và gửi chat. |
+| Quota | Kiểm tra quota tháng | Tổng câu hỏi của user trên mọi tài liệu trong tháng UTC; Free/Plus/Pro = 50/300/1000. |
+| Subscription | Chọn gói | Demo kích hoạt ngay; đổi gói không reset quota đã dùng trong tháng. |
 
-## Key Business Rules
+## Business Rules
 
-- Free plan allows **5 questions per student per document**.
-- The 6th question in the same document requires an upgraded plan.
-- Quota records are keyed by `userId + documentId`, not by subject.
-- Teachers can manage only their own subjects and uploaded documents.
-- Students can access documents only from subjects they have enrolled in.
-- Chat retrieval is restricted to the selected document to prevent cross-document leakage.
+- Tài liệu cũ được migrate thành `subject-wide` để tương thích ngược.
+- `class-restricted` phải có ít nhất một `classId`; không cho phép teacher chọn lớp của teacher khác.
+- Mất enrollment hoặc class bị archive thì student mất quyền đọc tài liệu restricted và lịch sử chat liên quan.
+- Quota có unique key `userId + periodKey`; chia nhỏ file, đổi subject hay đổi class không tạo thêm lượt hỏi.
+- Quota được reserve nguyên tử trước khi chạy AI và hoàn lại nếu pipeline lỗi.
+- Xóa/reject document không làm giảm quota tháng đã sử dụng.
+- RAG chỉ retrieve chunks của document đang chọn và không fallback sang kiến thức chung; thiếu context thì trả refusal message.
 
 ## PlantUML Source
-
-The editable PlantUML file is here:
 
 [`docs/use-case-diagram.puml`](./use-case-diagram.puml)

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
 import { AppProvider } from './context/AppContext.js';
 import { ChatProvider } from './context/ChatContext.js';
@@ -22,12 +22,14 @@ const StudyPage = React.lazy(() => import('./pages/StudyPage.js').then(m => ({ d
 const AuthenticatedApp: React.FC = () => {
   const { state: authState } = useAuth();
   const { state: appState, dispatch, refreshDocuments } = useApp();
+  const location = useLocation();
   const role = authState.user?.role;
+  const isStudyWorkspace = location.pathname.startsWith('/study/');
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${isStudyWorkspace ? 'focus-mode' : ''}`}>
       <AppHeader />
-      <Sidebar />
+      {!isStudyWorkspace && <Sidebar />}
       <main className="app-main">
         <React.Suspense fallback={<div className="flex-center" style={{ height: '100%' }}><span className="spinner" /></div>}>
           <Routes>

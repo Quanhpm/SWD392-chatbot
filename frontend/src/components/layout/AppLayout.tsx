@@ -42,8 +42,7 @@ export const AppLayout: React.FC = () => {
           left: 0;
           right: 0;
           bottom: 0;
-          background-color: rgba(0, 0, 0, 0.4);
-          backdrop-filter: blur(2px);
+          background-color: rgba(15, 23, 42, 0.38);
           z-index: 99;
         }
 

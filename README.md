@@ -8,6 +8,9 @@ Users can upload course materials (PDF chapters, DOCX notes, PPTX slides). The b
 - **Document Vault**: Manage and view all indexed materials (PDF, DOCX, PPTX).
 - **Intelligent RAG Pipeline**: Local cosine similarity ranking for free tier MongoDB compatibility.
 - **Academic Chat Interface**: Multi-session conversations with interactive source citations.
+- **Class-aware Privacy**: Documents can be shared subject-wide or restricted to selected classes.
+- **Monthly Account Quota**: Free/Plus/Pro include 50/300/1000 questions per user per UTC month.
+- **Email Notifications**: Gmail SMTP notifications for account creation, class assignment/enrollment, password reset, and document review decisions.
 - **Test Set Suite**: Includes 50 evaluation Q&A pairs spanning different categories and difficulties.
 
 ## 2. Tech Stack
@@ -79,6 +82,7 @@ se1939-rag-chatbot/
 | `/api/chat/sessions/:id/messages` | POST | Send message to session |
 | `/api/chat/sessions/:id` | DELETE | Delete session |
 | `/api/test-set` | GET | Get 50 course evaluation questions |
+| `/api/subscriptions/quota` | GET | Get current user's account-wide monthly quota |
 
 ## 7. Environment Variables
 | Variable | Default | Description |
@@ -92,7 +96,15 @@ se1939-rag-chatbot/
 | `CHUNK_SIZE` | `800` | Target chunk size (tokens) |
 | `CHUNK_OVERLAP` | `200` | Overlap between chunks |
 | `SIMILARITY_THRESHOLD` | `0.6` | Cosine similarity cutoff (0 - 1) |
-| `ALLOW_GENERAL_QUESTIONS` | `true` | Answer outside uploaded materials when retrieval has no matching context |
+| `EMAIL_ENABLED` | `false` | Enable transactional email notifications |
+| `SMTP_HOST` | `smtp.gmail.com` | SMTP server host |
+| `SMTP_PORT` | `465` | SMTP server port |
+| `SMTP_SECURE` | `true` | Use TLS from connection start |
+| `SMTP_USER` | None | Gmail address used by EduSmart |
+| `SMTP_PASS` | None | Google App Password, not the normal Gmail password |
+| `EMAIL_FROM_NAME` | `EduSmart` | Sender display name |
+
+Gmail configuration and test steps: [`docs/gmail-email-setup.md`](docs/gmail-email-setup.md).
 
 ## 8. Troubleshooting
 - **Gemini Errors**: Verify your API key is enabled for Gemini API and is correctly set in `backend/.env`.

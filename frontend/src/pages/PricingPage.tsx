@@ -144,8 +144,8 @@ export const PricingPage: React.FC = () => {
                   )}
                 </div>
                 <p className="pricing-plan-limit">
-                  {plan.questionLimit} câu hỏi / tài liệu
-                  {plan.durationDays ? ` / ${plan.durationDays} ngày` : ''}
+                  {plan.questionLimit} câu hỏi / tháng
+                  {plan.durationDays ? ` · gói có hiệu lực ${plan.durationDays} ngày` : ''}
                 </p>
               </div>
 
@@ -244,7 +244,8 @@ const PricingStyle: React.FC = () => (
       height: 64px;
       margin: 0 auto var(--spacing-md);
       border-radius: var(--radius-2xl);
-      background: linear-gradient(135deg, var(--color-primary-fixed), var(--color-surface-container));
+      background: var(--color-primary-fixed);
+      border: 1px solid var(--color-primary-fixed-dim);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -274,14 +275,14 @@ const PricingStyle: React.FC = () => (
       display: flex;
       flex-direction: column;
       background: var(--color-surface-container-lowest);
-      border: 1.5px solid var(--color-outline-variant);
-      border-radius: var(--radius-3xl);
-      padding: var(--spacing-xl) var(--spacing-lg);
+      border: 1px solid var(--color-outline-variant);
+      border-radius: var(--radius-2xl);
+      padding: 26px var(--spacing-lg);
       transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
     }
     .pricing-card:hover {
-      transform: translateY(-4px);
-      box-shadow: var(--shadow-lg);
+      border-color: #cbd5e1;
+      box-shadow: var(--shadow-md);
     }
 
     /* Free card: muted */
@@ -292,26 +293,22 @@ const PricingStyle: React.FC = () => (
 
     /* Plus card: highlighted */
     .pricing-card-popular {
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-md);
-      transform: scale(1.02);
+      border-color: #93c5fd;
+      box-shadow: 0 0 0 1px #93c5fd;
     }
     .pricing-card-popular:hover {
-      transform: scale(1.02) translateY(-4px);
-      box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-xl);
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 1px var(--color-primary), var(--shadow-md);
     }
 
     /* Pro card: gradient border */
     .pricing-card-pro {
-      border: 2px solid transparent;
-      background-image:
-        linear-gradient(var(--color-surface-container-lowest), var(--color-surface-container-lowest)),
-        linear-gradient(135deg, #f59e0b, #ef4444, #8b5cf6, #3b82f6);
-      background-origin: border-box;
-      background-clip: padding-box, border-box;
+      border-color: var(--color-outline-variant);
+      background: var(--color-surface-container-lowest);
     }
     .pricing-card-pro:hover {
-      box-shadow: 0 8px 32px rgba(245, 158, 11, 0.15), 0 8px 16px rgba(139, 92, 246, 0.1);
+      border-color: #cbd5e1;
+      box-shadow: var(--shadow-md);
     }
 
     /* Current plan glow */
@@ -340,7 +337,7 @@ const PricingStyle: React.FC = () => (
       color: white;
     }
     .pricing-pro-badge {
-      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      background: #0f172a;
       color: white;
     }
 
@@ -368,8 +365,8 @@ const PricingStyle: React.FC = () => (
       color: var(--color-primary);
     }
     .pricing-plan-icon-pro {
-      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(139, 92, 246, 0.15));
-      color: #f59e0b;
+      background: #f1f5f9;
+      color: #334155;
     }
     .pricing-plan-name {
       font: var(--text-headline-md);
@@ -437,15 +434,13 @@ const PricingStyle: React.FC = () => (
       justify-content: center;
       gap: 8px;
       padding: 14px;
-      border-radius: var(--radius-xl);
+      border-radius: var(--radius-lg);
       font: var(--text-label-md);
       font-weight: 700;
       transition: all var(--transition-fast);
-      box-shadow: var(--shadow-sm);
     }
     .pricing-subscribe-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
+      filter: brightness(.97);
     }
     .pricing-subscribe-btn:active {
       transform: scale(0.98);
@@ -470,11 +465,11 @@ const PricingStyle: React.FC = () => (
       background: var(--color-primary-container);
     }
     .pricing-subscribe-btn-pro {
-      background: linear-gradient(135deg, #f59e0b, #ef4444);
+      background: #0f172a;
       color: white;
     }
     .pricing-subscribe-btn-pro:hover {
-      background: linear-gradient(135deg, #d97706, #dc2626);
+      background: #1e293b;
     }
 
     .pricing-current-badge {

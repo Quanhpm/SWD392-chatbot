@@ -2,10 +2,13 @@ import { CourseClassModel } from '../models/CourseClass.js';
 import { UserModel, type IUser } from '../models/User.js';
 import { AppError } from '../middleware/errorHandler.js';
 import type { UserRole } from '../types/index.js';
+import type { EmailService } from './emailService.js';
 
 const publicFields = '-password';
 
 export class AdminService {
+  constructor(private readonly emailService: EmailService) {}
+
   async listUsers(filters: { role?: UserRole; active?: boolean; search?: string }): Promise<IUser[]> {
     const query: Record<string, unknown> = {};
     if (filters.role) query.role = filters.role;
@@ -47,6 +50,12 @@ export class AdminService {
       fullName: input.fullName.trim(),
       isActive: true,
     });
+    await this.emailService.sendAccountCreated({
+      email: user.email,
+      fullName: user.fullName,
+      username: user.username,
+      role: user.role,
+    }, input.password);
     const value = user.toObject();
     delete (value as Partial<IUser>).password;
     return value;
@@ -80,6 +89,11 @@ export class AdminService {
     if (!user) throw new AppError('User not found.', 404);
     user.password = password;
     await user.save();
+    await this.emailService.sendPasswordReset({
+      email: user.email,
+      fullName: user.fullName,
+      username: user.username,
+    }, password);
   }
 
   async deactivateUser(id: string, actorId: string): Promise<void> {

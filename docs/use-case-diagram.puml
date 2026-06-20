@@ -3,110 +3,95 @@ left to right direction
 skinparam packageStyle rectangle
 skinparam actorStyle awesome
 skinparam shadowing false
-skinparam usecase {
-  BackgroundColor #F7FAFD
-  BorderColor #727785
-  ArrowColor #414754
-}
 
-actor "Teacher" as Teacher
-actor "Student" as Student
+actor Admin
+actor Teacher
+actor Student
 actor "Gemini API" as Gemini
-database "MongoDB" as Mongo
+database MongoDB as Mongo
 
 rectangle "Smart RAG Learning Platform" {
-  package "Subject and Document Management" {
-    usecase "Create subject" as UC_CreateSubject
-    usecase "Share subject password" as UC_SharePassword
-    usecase "Upload document" as UC_UploadDocument
-    usecase "Enter subject/chapter metadata" as UC_Metadata
-    usecase "Delete own document" as UC_DeleteDocument
-    usecase "Delete own subject" as UC_DeleteSubject
-    usecase "Parse document text" as UC_Parse
-    usecase "Split text into chunks" as UC_Chunk
-    usecase "Generate embeddings" as UC_Embed
-    usecase "Store document and chunks" as UC_StoreDoc
+  package "Academic Administration" {
+    usecase "Manage users and subjects" as UC_ManageCatalog
+    usecase "Manage classes and roster" as UC_ManageClasses
+    usecase "Join class by code" as UC_JoinClass
+  }
+
+  package "Document Management" {
+    usecase "Upload document" as UC_Upload
+    usecase "Choose document visibility" as UC_Visibility
+    usecase "Validate target classes" as UC_ValidateClasses
+    usecase "Parse, chunk and embed" as UC_Index
+    usecase "Approve or reject document" as UC_Review
   }
 
   package "Learning" {
-    usecase "View joinable subjects" as UC_ViewSubjects
-    usecase "Enroll in subject" as UC_Enroll
-    usecase "Read enrolled documents" as UC_ReadDocs
-    usecase "View study assist" as UC_Assist
-    usecase "Generate study assist" as UC_GenerateAssist
+    usecase "Read authorized document" as UC_Read
+    usecase "Generate Study Assist" as UC_GenerateAssist
+    usecase "View Study Assist" as UC_ViewAssist
   }
 
-  package "Document-scoped Chat" {
-    usecase "Select document" as UC_SelectDocument
-    usecase "Start document chat session" as UC_StartChat
+  package "RAG Chat and Quota" {
+    usecase "Start document chat" as UC_StartChat
+    usecase "Open chat history" as UC_OpenChat
     usecase "Ask question" as UC_Ask
-    usecase "Check document quota" as UC_CheckQuota
-    usecase "Retrieve chunks from selected document" as UC_Retrieve
+    usecase "Authorize document scope" as UC_Authorize
+    usecase "Reserve monthly user quota" as UC_Quota
+    usecase "Retrieve selected document chunks" as UC_Retrieve
     usecase "Generate answer with citations" as UC_Answer
-    usecase "Save chat history" as UC_SaveChat
   }
 
   package "Subscription" {
-    usecase "View plans" as UC_ViewPlans
-    usecase "Request upgrade" as UC_RequestUpgrade
-    usecase "Approve/reject upgrade" as UC_ApproveUpgrade
-    usecase "Reset quota window" as UC_ResetQuota
+    usecase "View and select plan" as UC_Plan
   }
 }
 
-Teacher --> UC_CreateSubject
-Teacher --> UC_SharePassword
-Teacher --> UC_UploadDocument
-Teacher --> UC_DeleteDocument
-Teacher --> UC_DeleteSubject
-Teacher --> UC_ApproveUpgrade
-
-Student --> UC_ViewSubjects
-Student --> UC_Enroll
-Student --> UC_ReadDocs
-Student --> UC_Assist
-Student --> UC_SelectDocument
+Admin --> UC_ManageCatalog
+Admin --> UC_ManageClasses
+Admin --> UC_Review
+Teacher --> UC_Upload
+Teacher --> UC_GenerateAssist
+Teacher --> UC_Read
+Student --> UC_JoinClass
+Student --> UC_Read
+Student --> UC_ViewAssist
 Student --> UC_StartChat
+Student --> UC_OpenChat
 Student --> UC_Ask
-Student --> UC_ViewPlans
-Student --> UC_RequestUpgrade
+Student --> UC_Plan
 
-UC_UploadDocument .> UC_Metadata : <<include>>
-UC_UploadDocument .> UC_Parse : <<include>>
-UC_UploadDocument .> UC_Chunk : <<include>>
-UC_UploadDocument .> UC_Embed : <<include>>
-UC_UploadDocument .> UC_StoreDoc : <<include>>
-
-UC_Assist .> UC_GenerateAssist : <<extend>>
-UC_StartChat .> UC_SelectDocument : <<include>>
-UC_Ask .> UC_CheckQuota : <<include>>
+UC_Upload .> UC_Visibility : <<include>>
+UC_Visibility .> UC_ValidateClasses : <<include>>\nwhen class-restricted
+UC_Upload .> UC_Index : <<include>>
+UC_Read .> UC_Authorize : <<include>>
+UC_ViewAssist .> UC_Authorize : <<include>>
+UC_StartChat .> UC_Authorize : <<include>>
+UC_OpenChat .> UC_Authorize : <<include>>
+UC_Ask .> UC_Authorize : <<include>>
+UC_Ask .> UC_Quota : <<include>>
 UC_Ask .> UC_Retrieve : <<include>>
 UC_Ask .> UC_Answer : <<include>>
-UC_Ask .> UC_SaveChat : <<include>>
-UC_ApproveUpgrade .> UC_ResetQuota : <<include>>
 
-Gemini --> UC_Embed
+Gemini --> UC_Index
 Gemini --> UC_GenerateAssist
 Gemini --> UC_Answer
-
-Mongo --> UC_StoreDoc
-Mongo --> UC_ReadDocs
+Mongo --> UC_Authorize
+Mongo --> UC_Quota
 Mongo --> UC_Retrieve
-Mongo --> UC_SaveChat
-Mongo --> UC_CheckQuota
-Mongo --> UC_ResetQuota
 
-note right of UC_CheckQuota
-Free plan allows 5 questions
-per student per document.
-The 6th question in the same
-document requires an upgrade.
+note right of UC_Visibility
+subject-wide: all active classes in subject
+class-restricted: selected active classes only
+end note
+
+note right of UC_Quota
+Account-wide UTC calendar month
+Free 50 / Plus 300 / Pro 1000
+Plan changes do not reset usage
 end note
 
 note right of UC_Retrieve
-Retrieval is restricted to the
-selected document to prevent
-cross-document leakage.
+Retrieval remains scoped to the
+single selected document.
 end note
-
 @enduml

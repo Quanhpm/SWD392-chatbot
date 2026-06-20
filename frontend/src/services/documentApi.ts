@@ -1,5 +1,5 @@
 import api from './api.js';
-import type { IDocument, IChunk } from '../types/index.js';
+import type { IDocument, IChunk, DocumentVisibility } from '../types/index.js';
 
 export interface DocumentAssistData {
   takeaways: { concept: string; desc: string; icon: string; color: string }[];
@@ -9,6 +9,8 @@ export interface DocumentAssistData {
 export interface UploadParams {
   file: File;
   subjectId: string;
+  visibility: DocumentVisibility;
+  classIds: string[];
   chapter: number;
   chapterTitle: string;
 }
@@ -23,6 +25,8 @@ export const uploadDocument = async (
   const formData = new FormData();
   formData.append('file', params.file);
   formData.append('subjectId', params.subjectId);
+  formData.append('visibility', params.visibility);
+  formData.append('classIds', JSON.stringify(params.classIds));
   formData.append('chapter', String(params.chapter));
   formData.append('chapterTitle', params.chapterTitle);
 

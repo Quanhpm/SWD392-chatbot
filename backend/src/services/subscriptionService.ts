@@ -1,6 +1,6 @@
 import { SubscriptionPlanModel, type ISubscriptionPlan } from '../models/SubscriptionPlan.js';
 import { UserSubscriptionModel, type IUserSubscription } from '../models/UserSubscription.js';
-import { QuestionQuotaModel, type IQuestionQuota } from '../models/QuestionQuota.js';
+import { QuestionQuotaModel } from '../models/QuestionQuota.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
 
@@ -10,7 +10,20 @@ export interface QuotaStatus {
   limit: number;
   planName: string;
   remaining: number;
+  periodKey: string;
+  periodStart: Date;
+  periodEnd: Date;
 }
+
+const currentUtcMonth = (date = new Date()): { periodKey: string; periodStart: Date; periodEnd: Date } => {
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  return {
+    periodKey: `${year}-${String(month + 1).padStart(2, '0')}`,
+    periodStart: new Date(Date.UTC(year, month, 1)),
+    periodEnd: new Date(Date.UTC(year, month + 1, 1)),
+  };
+};
 
 export class SubscriptionService {
   /** Get all active plans sorted by sortOrder */
@@ -86,15 +99,6 @@ export class SubscriptionService {
       paymentMethod: 'demo',
     });
 
-    await QuestionQuotaModel.updateMany(
-      { userId },
-      {
-        questionCount: 0,
-        periodStart: now,
-        periodEnd: subscription.endDate,
-      },
-    );
-
     return subscription.toObject();
   }
 
@@ -110,44 +114,17 @@ export class SubscriptionService {
   }
 
   /**
-   * Check if user has remaining quota for a document.
+   * Check the user's account-wide quota for the current UTC calendar month.
    * This is the KEY method called before each chat message.
    */
-  async checkQuota(userId: string, documentId: string): Promise<QuotaStatus> {
-    const activeSubscription = await this.getUserSubscription(userId);
+  async checkQuota(userId: string): Promise<QuotaStatus> {
     const plan = await this.getEffectivePlan(userId);
     const planName = plan.name;
     const limit = plan.questionLimit;
+    const period = currentUtcMonth();
+    const quota = await QuestionQuotaModel.findOne({ userId, periodKey: period.periodKey }).lean().exec();
 
-    const now = new Date();
-    const quota = await QuestionQuotaModel.findOne({ userId, documentId }).exec();
-
-    if (!quota) {
-      return {
-        allowed: true,
-        used: 0,
-        limit,
-        planName,
-        remaining: limit,
-      };
-    }
-
-    if (activeSubscription && (
-      quota.periodStart < activeSubscription.startDate
-      || quota.periodEnd?.getTime() !== activeSubscription.endDate?.getTime()
-    )) {
-      quota.questionCount = 0;
-      quota.periodStart = activeSubscription.startDate;
-      quota.periodEnd = activeSubscription.endDate;
-      await quota.save();
-    } else if (quota.periodEnd && now >= quota.periodEnd) {
-      quota.questionCount = 0;
-      quota.periodStart = now;
-      quota.periodEnd = null;
-      await quota.save();
-    }
-
-    const used = quota.questionCount;
+    const used = quota?.questionCount ?? 0;
     const remaining = Math.max(0, limit - used);
 
     return {
@@ -156,39 +133,65 @@ export class SubscriptionService {
       limit,
       planName,
       remaining,
+      ...period,
     };
   }
 
-  /** Increment question count after a successful answer */
-  async incrementQuota(userId: string, documentId: string): Promise<void> {
-    const activeSubscription = await this.getUserSubscription(userId);
+  /** Atomically reserve one monthly question so parallel requests cannot exceed the plan limit. */
+  async reserveQuota(userId: string): Promise<QuotaStatus> {
+    const plan = await this.getEffectivePlan(userId);
+    const period = currentUtcMonth();
     const now = new Date();
 
-    await QuestionQuotaModel.findOneAndUpdate(
-      { userId, documentId },
-      {
-        $inc: { questionCount: 1 },
-        $set: { lastQuestionAt: now },
-        $setOnInsert: {
-          periodStart: activeSubscription?.startDate ?? now,
-          periodEnd: activeSubscription?.endDate ?? null,
+    try {
+      await QuestionQuotaModel.updateOne(
+        { userId, periodKey: period.periodKey },
+        {
+          $setOnInsert: {
+            userId,
+            periodKey: period.periodKey,
+            questionCount: 0,
+            periodStart: period.periodStart,
+            periodEnd: period.periodEnd,
+            lastQuestionAt: now,
+          },
         },
-      },
-      { upsert: true, new: true },
+        { upsert: true },
+      );
+    } catch (error) {
+      if (!(error instanceof Error && 'code' in error && error.code === 11000)) throw error;
+    }
+
+    const quota = await QuestionQuotaModel.findOneAndUpdate(
+      { userId, periodKey: period.periodKey, questionCount: { $lt: plan.questionLimit } },
+      { $inc: { questionCount: 1 }, $set: { lastQuestionAt: now } },
+      { new: true },
+    ).lean().exec();
+
+    if (!quota) {
+      const current = await this.checkQuota(userId);
+      throw new AppError(
+        `Monthly question limit reached (${current.used}/${current.limit} for ${current.planName} plan).`,
+        403,
+      );
+    }
+
+    return {
+      allowed: quota.questionCount < plan.questionLimit,
+      used: quota.questionCount,
+      limit: plan.questionLimit,
+      planName: plan.name,
+      remaining: Math.max(0, plan.questionLimit - quota.questionCount),
+      ...period,
+    };
+  }
+
+  /** Refund a reservation when the AI pipeline fails before returning a usable response. */
+  async releaseQuota(userId: string, periodKey: string): Promise<void> {
+    await QuestionQuotaModel.updateOne(
+      { userId, periodKey, questionCount: { $gt: 0 } },
+      { $inc: { questionCount: -1 } },
     );
-  }
-
-  /** Get quota usage for all documents for a user */
-  async getQuotaUsage(userId: string): Promise<IQuestionQuota[]> {
-    return QuestionQuotaModel.find({ userId, documentId: { $exists: true } })
-      .populate('documentId', 'originalName subject chapter chapterTitle')
-      .lean()
-      .exec();
-  }
-
-  /** Get quota for a specific document */
-  async getDocumentQuota(userId: string, documentId: string): Promise<QuotaStatus> {
-    return this.checkQuota(userId, documentId);
   }
 
   /** Cron job: expire outdated subscriptions */
@@ -206,20 +209,14 @@ export class SubscriptionService {
     return result.modifiedCount;
   }
 
-  /** Reset elapsed paid-plan quota windows. Expired subscriptions then fall back to Free. */
+  /** Monthly records roll over by periodKey; retain 13 months and remove older history. */
   async resetMonthlyQuotas(): Promise<number> {
-    const now = new Date();
-    const result = await QuestionQuotaModel.updateMany(
-      { periodEnd: { $ne: null, $lte: now } },
-      {
-        questionCount: 0,
-        periodStart: now,
-        periodEnd: null,
-      },
-    );
-    if (result.modifiedCount > 0) {
-      logger.info(`Reset ${result.modifiedCount} quota record(s)`);
+    const retentionCutoff = new Date();
+    retentionCutoff.setUTCMonth(retentionCutoff.getUTCMonth() - 13);
+    const result = await QuestionQuotaModel.deleteMany({ periodEnd: { $lt: retentionCutoff } });
+    if (result.deletedCount > 0) {
+      logger.info(`Removed ${result.deletedCount} expired quota history record(s)`);
     }
-    return result.modifiedCount;
+    return result.deletedCount;
   }
 }

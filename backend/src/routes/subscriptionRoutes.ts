@@ -1,13 +1,10 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
-import { body, param } from 'express-validator';
+import { body } from 'express-validator';
 
 import { subscriptionService } from '../config/dependencies.js';
-import { DocumentModel } from '../models/Document.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
-import { AppError } from '../middleware/errorHandler.js';
 import { validateRequest } from '../middleware/validation.js';
-import { assertDocumentAccess } from '../services/accessService.js';
 
 export const subscriptionRoutes = Router();
 
@@ -16,15 +13,6 @@ const planNameValidator = [
     .isIn(['free', 'plus', 'pro'])
     .withMessage('planName must be one of: free, plus, pro.'),
 ];
-
-const verifyQuotaDocumentAccess = async (req: Request, documentId: string): Promise<void> => {
-  const document = await DocumentModel.findById(documentId).lean().exec();
-  if (!document) {
-    throw new AppError('Document not found.', 404);
-  }
-
-  await assertDocumentAccess({ id: req.user!.id, role: req.user!.role }, document);
-};
 
 // ─── Public ───────────────────────────────────────────────────────────────────
 
@@ -95,35 +83,13 @@ subscriptionRoutes.post('/cancel', requireRole('student'), async (req: Request, 
 
 /**
  * GET /api/subscriptions/quota
- * Get quota usage for all documents.
+ * Get account-wide usage for the current UTC calendar month.
  */
 subscriptionRoutes.get('/quota', requireRole('student'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const usage = await subscriptionService.getQuotaUsage(req.user!.id);
-    const planName = await subscriptionService.getEffectivePlanName(req.user!.id);
-    res.json({ success: true, planName, usage });
+    const quota = await subscriptionService.checkQuota(req.user!.id);
+    res.json({ success: true, quota });
   } catch (error) {
     next(error);
   }
 });
-
-/**
- * GET /api/subscriptions/quota/:documentId
- * Get quota for a specific document.
- */
-subscriptionRoutes.get(
-  '/quota/:documentId',
-  requireRole('student'),
-  [param('documentId').isMongoId().withMessage('Invalid document id.')],
-  validateRequest,
-  async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const { documentId } = req.params as { documentId: string };
-      await verifyQuotaDocumentAccess(req, documentId);
-      const quota = await subscriptionService.getDocumentQuota(req.user!.id, documentId);
-      res.json({ success: true, quota });
-    } catch (error) {
-      next(error);
-    }
-  },
-);

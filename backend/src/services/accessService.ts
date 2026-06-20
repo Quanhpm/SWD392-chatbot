@@ -12,6 +12,42 @@ export interface Actor {
   role: UserRole;
 }
 
+export const getStudentClassIds = async (studentId: string, subjectId?: string): Promise<string[]> => {
+  const enrollments = await ClassEnrollmentModel.find({ studentId, status: 'active' })
+    .select('classId')
+    .lean()
+    .exec();
+  if (enrollments.length === 0) return [];
+
+  const query: Record<string, unknown> = {
+    _id: { $in: enrollments.map((item) => item.classId) },
+    status: 'active',
+  };
+  if (subjectId) query.subjectId = subjectId;
+
+  const classes = await CourseClassModel.find(query).select('_id').lean().exec();
+  return classes.map((courseClass) => courseClass._id.toString());
+};
+
+export const getTeacherClassIds = async (teacherId: string, subjectId?: string): Promise<string[]> => {
+  const query: Record<string, unknown> = { teacherId, status: 'active' };
+  if (subjectId) query.subjectId = subjectId;
+  const classes = await CourseClassModel.find(query).select('_id').lean().exec();
+  return classes.map((courseClass) => courseClass._id.toString());
+};
+
+export const getAccessibleClassIds = async (actor: Actor, subjectId?: string): Promise<string[]> => {
+  if (actor.role === 'admin') {
+    const query: Record<string, unknown> = {};
+    if (subjectId) query.subjectId = subjectId;
+    const classes = await CourseClassModel.find(query).select('_id').lean().exec();
+    return classes.map((courseClass) => courseClass._id.toString());
+  }
+  return actor.role === 'teacher'
+    ? getTeacherClassIds(actor.id, subjectId)
+    : getStudentClassIds(actor.id, subjectId);
+};
+
 export const getStudentSubjectIds = async (studentId: string): Promise<string[]> => {
   const enrollments = await ClassEnrollmentModel.find({ studentId, status: 'active' })
     .select('classId')
@@ -68,6 +104,41 @@ export const assertSubjectAccess = async (actor: Actor, subjectId: string): Prom
   }
 };
 
+export const resolveUploadClassScope = async (
+  teacherId: string,
+  subjectId: string,
+  visibility: IDocument['visibility'],
+  requestedClassIds: string[],
+): Promise<Types.ObjectId[]> => {
+  if (visibility === 'subject-wide') return [];
+  const uniqueClassIds = [...new Set(requestedClassIds)];
+  if (uniqueClassIds.length === 0) {
+    throw new AppError('Select at least one class for a class-restricted document.', 400);
+  }
+
+  const allowedClassIds = await getTeacherClassIds(teacherId, subjectId);
+  if (uniqueClassIds.some((id) => !allowedClassIds.includes(id))) {
+    throw new AppError('A restricted document can only target your active classes in this subject.', 403);
+  }
+  return uniqueClassIds.map((id) => new Types.ObjectId(id));
+};
+
+const assertDocumentScopeAccess = async (actor: Actor, document: IDocument): Promise<void> => {
+  if (!document.visibility || document.visibility === 'subject-wide') {
+    await assertSubjectAccess(actor, document.subjectId.toString());
+    return;
+  }
+
+  const allowedClassIds = new Set((document.classIds ?? []).map((id) => id.toString()));
+  if (allowedClassIds.size === 0) {
+    throw new AppError('This restricted document has no target class.', 403);
+  }
+  const actorClassIds = await getAccessibleClassIds(actor, document.subjectId.toString());
+  if (!actorClassIds.some((id) => allowedClassIds.has(id))) {
+    throw new AppError('This document is restricted to another class.', 403);
+  }
+};
+
 export type DocumentAccessMode = 'read' | 'chat' | 'assist-generate' | 'delete';
 
 export const assertDocumentAccess = async (
@@ -77,14 +148,13 @@ export const assertDocumentAccess = async (
 ): Promise<void> => {
   if (actor.role === 'admin') return;
 
-  const subjectId = document.subjectId.toString();
   const isUploader = document.uploadedBy.toString() === actor.id;
 
   if (actor.role === 'student') {
     if (document.status !== 'approved') {
       throw new AppError('This document is not available to students.', 403);
     }
-    await assertSubjectAccess(actor, subjectId);
+    await assertDocumentScopeAccess(actor, document);
     return;
   }
 
@@ -103,7 +173,8 @@ export const assertDocumentAccess = async (
   }
 
   if (document.status === 'approved') {
-    await assertSubjectAccess(actor, subjectId);
+    if (isUploader) return;
+    await assertDocumentScopeAccess(actor, document);
     return;
   }
 

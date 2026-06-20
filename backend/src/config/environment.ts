@@ -14,7 +14,6 @@ export interface Environment {
   chunkOverlap: number;
   topK: number;
   similarityThreshold: number;
-  allowGeneralQuestions: boolean;
   maxFileSize: number;
   uploadDir: string;
   // Auth
@@ -27,6 +26,15 @@ export interface Environment {
   adminEmail?: string;
   adminFullName?: string;
   adminUserCode?: string;
+  // Transactional email (SMTP / Gmail)
+  emailEnabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUser?: string;
+  smtpPass?: string;
+  emailFromName: string;
+  emailFromAddress?: string;
 }
 
 const readString = (name: string, fallback?: string): string => {
@@ -52,12 +60,18 @@ const readNumber = (name: string, fallback: number): number => {
 
 const readBoolean = (name: string, fallback: boolean): boolean => {
   const rawValue = process.env[name];
-  if (!rawValue) {
-    return fallback;
-  }
-
-  return ['1', 'true', 'yes', 'on'].includes(rawValue.toLowerCase());
+  if (!rawValue) return fallback;
+  if (rawValue === 'true') return true;
+  if (rawValue === 'false') return false;
+  throw new Error(`Environment variable ${name} must be true or false`);
 };
+
+const emailEnabled = readBoolean('EMAIL_ENABLED', false);
+const smtpUser = process.env.SMTP_USER?.trim() || undefined;
+const smtpPass = process.env.SMTP_PASS?.replace(/\s+/g, '') || undefined;
+if (emailEnabled && (!smtpUser || !smtpPass)) {
+  throw new Error('SMTP_USER and SMTP_PASS are required when EMAIL_ENABLED=true');
+}
 
 export const env: Environment = {
   geminiApiKey: readString('GEMINI_API_KEY'),
@@ -71,7 +85,6 @@ export const env: Environment = {
   chunkOverlap: readNumber('CHUNK_OVERLAP', 200),
   topK: readNumber('TOP_K', 5),
   similarityThreshold: readNumber('SIMILARITY_THRESHOLD', 0.6),
-  allowGeneralQuestions: readBoolean('ALLOW_GENERAL_QUESTIONS', true),
   maxFileSize: readNumber('MAX_FILE_SIZE', 52_428_800),
   uploadDir: readString('UPLOAD_DIR', './uploads'),
   // Auth
@@ -84,4 +97,12 @@ export const env: Environment = {
   adminEmail: process.env.ADMIN_EMAIL?.trim() || undefined,
   adminFullName: process.env.ADMIN_FULL_NAME?.trim() || undefined,
   adminUserCode: process.env.ADMIN_USER_CODE?.trim() || undefined,
+  emailEnabled,
+  smtpHost: readString('SMTP_HOST', 'smtp.gmail.com'),
+  smtpPort: readNumber('SMTP_PORT', 465),
+  smtpSecure: readBoolean('SMTP_SECURE', true),
+  smtpUser,
+  smtpPass,
+  emailFromName: readString('EMAIL_FROM_NAME', 'EduSmart'),
+  emailFromAddress: process.env.EMAIL_FROM_ADDRESS?.trim() || smtpUser,
 };

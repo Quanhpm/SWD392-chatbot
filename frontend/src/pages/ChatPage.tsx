@@ -8,7 +8,7 @@ import { ChatMessageList } from '../components/chat/ChatMessageList.js';
 import { ChatInput } from '../components/chat/ChatInput.js';
 import { QuotaIndicator } from '../components/chat/QuotaIndicator.js';
 import { ErrorToast } from '../components/shared/ErrorToast.js';
-import { getDocumentQuota } from '../services/subscriptionApi.js';
+import { getCurrentQuota } from '../services/subscriptionApi.js';
 import type { IDocument, IQuotaStatus } from '../types/index.js';
 
 const ChatInner: React.FC = () => {
@@ -40,14 +40,13 @@ const ChatInner: React.FC = () => {
     ? ['approved', 'pending'].includes(doc.status)
     : doc.status === 'approved');
   const sessionDocumentId = appState.sessions.find((session) => session._id === activeSessionId)?.documentId;
-  const quotaDocumentId = sessionDocumentId ?? activeDocumentId;
 
-  const refreshQuota = useCallback(async (documentId: string) => {
+  const refreshQuota = useCallback(async () => {
     if (role !== 'student') return;
 
     try {
       setQuotaLoading(true);
-      setQuota(await getDocumentQuota(documentId));
+      setQuota(await getCurrentQuota());
     } catch (err) {
       console.error('Failed to load question quota:', err);
     } finally {
@@ -89,12 +88,12 @@ const ChatInner: React.FC = () => {
   }, [sessionDocumentId]);
 
   useEffect(() => {
-    if (role === 'student' && quotaDocumentId) {
-      void refreshQuota(quotaDocumentId);
+    if (role === 'student') {
+      void refreshQuota();
     } else {
       setQuota(null);
     }
-  }, [quotaDocumentId, refreshQuota, role]);
+  }, [refreshQuota, role]);
 
   const handleDocumentChange = (documentId: string) => {
     setActiveDocumentId(documentId);
@@ -112,8 +111,8 @@ const ChatInner: React.FC = () => {
     const nextQuota = await postMessage(text, activeDocumentId);
     if (nextQuota) {
       setQuota(nextQuota);
-    } else if (role === 'student' && quotaDocumentId) {
-      await refreshQuota(quotaDocumentId);
+    } else if (role === 'student') {
+      await refreshQuota();
     }
   };
 
@@ -185,7 +184,7 @@ const ChatInner: React.FC = () => {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 10px 24px;
+          padding: 9px 20px;
           background: var(--color-surface-container-lowest);
           border-bottom: 1px solid var(--color-outline-variant);
           flex-wrap: wrap;
@@ -197,14 +196,14 @@ const ChatInner: React.FC = () => {
         }
         .chat-subject-chips {
           display: flex;
-          gap: 8px;
+          gap: 6px;
           flex-wrap: wrap;
         }
         .chat-subject-chip {
-          padding: 4px 14px;
-          border-radius: var(--radius-full);
+          padding: 5px 10px;
+          border-radius: var(--radius-lg);
           font: var(--text-label-md);
-          border: 1.5px solid var(--color-outline-variant);
+          border: 1px solid var(--color-outline-variant);
           color: var(--color-on-surface-variant);
           transition: all var(--transition-fast);
         }

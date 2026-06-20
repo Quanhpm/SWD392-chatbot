@@ -19,6 +19,7 @@ import { logger } from './utils/logger.js';
 import { seedSubscriptionPlans } from './utils/seedPlans.js';
 import { seedInitialAdmin } from './utils/seedAdmin.js';
 import { DocumentModel } from './models/Document.js';
+import { migratePrivacyAndMonthlyQuota } from './utils/migratePrivacyAndMonthlyQuota.js';
 
 const app = express();
 
@@ -69,7 +70,9 @@ const startServer = async (): Promise<void> => {
   await connectDatabase();
   await seedInitialAdmin();
   await seedSubscriptionPlans();
+  await migratePrivacyAndMonthlyQuota();
   await QuestionQuotaModel.syncIndexes();
+  await DocumentModel.syncIndexes();
   await subscriptionService.expireSubscriptions();
   await subscriptionService.resetMonthlyQuotas();
 

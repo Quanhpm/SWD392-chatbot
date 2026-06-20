@@ -8,7 +8,7 @@ export const SessionList: React.FC = () => {
   return (
     <div className="session-list">
       {sessions.length === 0 ? (
-        <span className="no-sessions-label">No conversation history</span>
+        <span className="no-sessions-label">Chưa có lịch sử trò chuyện</span>
       ) : (
         sessions.map((session) => <SessionItem key={session._id} session={session} />)
       )}

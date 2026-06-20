@@ -323,6 +323,16 @@
                   "type": "text"
                 },
                 {
+                  "key": "visibility",
+                  "value": "subject-wide",
+                  "type": "text"
+                },
+                {
+                  "key": "classIds",
+                  "value": "[]",
+                  "type": "text"
+                },
+                {
                   "key": "chapter",
                   "value": "1",
                   "type": "text"

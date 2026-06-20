@@ -2,10 +2,12 @@ import React from 'react';
 import { useApp } from '../../context/AppContext.js';
 import { useAuth } from '../../context/AuthContext.js';
 import { Icon } from '../shared/Icon.js';
+import { useNavigate } from 'react-router-dom';
 
 export const AppHeader: React.FC = () => {
   const { state, dispatch } = useApp();
   const { state: authState, logout } = useAuth();
+  const navigate = useNavigate();
 
   const user = authState.user;
   const initials = user ? user.username.slice(0, 2).toUpperCase() : 'GS';
@@ -20,12 +22,12 @@ export const AppHeader: React.FC = () => {
         >
           <Icon name={state.sidebarOpen ? 'menu_open' : 'menu'} />
         </button>
-        <div className="header-logo-container flex-center">
+        <button className="header-logo-container flex-center" onClick={() => navigate(user?.role === 'admin' ? '/admin' : user?.role === 'teacher' ? '/dashboard' : '/portal')} aria-label="Về trang chính">
           <div className="header-logo flex-center">
             <Icon name="auto_awesome" style={{ fontSize: '18px', color: 'var(--color-primary)' }} />
           </div>
           <h1 className="header-title">EduSmart</h1>
-        </div>
+        </button>
       </div>
 
       <div className="header-right flex-center">
@@ -53,49 +55,51 @@ export const AppHeader: React.FC = () => {
       <style>{`
         .app-header {
           height: var(--header-height);
-          background: var(--color-surface-container-lowest);
+          flex: 0 0 var(--header-height);
+          background: rgba(255,255,255,.94);
+          backdrop-filter: blur(10px);
           border-bottom: 1px solid var(--color-outline-variant);
           justify-content: space-between;
-          padding: 0 24px;
+          padding: 0 18px;
           position: sticky;
           top: 0;
           z-index: 50;
-          box-shadow: var(--shadow-sm);
           grid-area: header;
         }
-        .header-left { gap: 12px; }
-        .header-logo-container { gap: 10px; }
+        .header-left { gap: 8px; }
+        .header-logo-container { gap: 9px; }
         .header-logo {
-          width: 32px;
-          height: 32px;
+          width: 30px;
+          height: 30px;
           background: var(--color-primary-fixed);
+          border: 1px solid var(--color-primary-fixed-dim);
           border-radius: var(--radius-lg);
-          box-shadow: var(--shadow-sm);
         }
         .header-title {
-          font: var(--text-headline-md);
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 700;
-          color: var(--color-primary);
+          letter-spacing: -.01em;
+          color: var(--color-on-surface);
           white-space: nowrap;
         }
         .menu-btn {
           width: 40px; height: 40px;
-          border-radius: var(--radius-full);
+          border-radius: var(--radius-lg);
           transition: background var(--transition-fast);
           display: none;
           color: var(--color-on-surface-variant);
         }
         .menu-btn:hover { background: var(--color-surface-container-low); }
-        .header-right { gap: 12px; }
+        .header-right { gap: 10px; }
         .header-role-chip {
           display: flex;
           align-items: center;
           gap: 5px;
-          padding: 4px 12px;
+          padding: 3px 9px;
           border-radius: var(--radius-full);
-          background: var(--color-primary-fixed);
-          color: var(--color-primary);
+          border: 1px solid var(--color-outline-variant);
+          background: var(--color-surface-container-low);
+          color: var(--color-on-surface-variant);
           font: var(--text-label-sm);
         }
         .header-user { gap: 8px; }
@@ -105,19 +109,18 @@ export const AppHeader: React.FC = () => {
           display: none;
         }
         .user-avatar {
-          width: 32px; height: 32px;
+          width: 30px; height: 30px;
           border-radius: var(--radius-full);
-          background: var(--color-primary);
+          background: var(--color-on-surface);
           color: white;
           font: var(--text-label-sm);
           font-weight: 700;
-          border: 2px solid var(--color-primary-fixed);
           cursor: pointer;
           flex-shrink: 0;
         }
         .header-btn {
-          width: 36px; height: 36px;
-          border-radius: var(--radius-full);
+          width: 34px; height: 34px;
+          border-radius: var(--radius-lg);
           color: var(--color-on-surface-variant);
           transition: background var(--transition-fast), color var(--transition-fast);
         }

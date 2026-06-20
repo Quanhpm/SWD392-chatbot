@@ -18,9 +18,9 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
       <div className="welcome-icon-box flex-center">
         <Icon name="auto_awesome" style={{ fontSize: '30px', color: 'var(--color-primary)' }} />
       </div>
-      <h2 className="welcome-title">Tôi có thể hỗ trợ nghiên cứu gì cho bạn?</h2>
+      <h2 className="welcome-title">Bạn muốn tìm hiểu điều gì?</h2>
       <p className="welcome-subtitle">
-        Đặt câu hỏi về tài liệu môn SE1939, yêu cầu tóm tắt nội dung, hoặc khám phá các khái niệm Software Modeling.
+        Câu trả lời được tạo từ nội dung của tài liệu bạn đang chọn và kèm nguồn tham chiếu.
       </p>
 
       <div className="suggestions-container flex-center">
@@ -54,10 +54,9 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
         .welcome-icon-box {
           width: 56px;
           height: 56px;
-          background-color: var(--color-surface-container-highest);
+          background-color: var(--color-primary-fixed);
           border: 1px solid var(--color-outline-variant);
-          border-radius: var(--radius-2xl);
-          box-shadow: var(--shadow-sm);
+          border-radius: var(--radius-xl);
           flex-shrink: 0;
         }
         .welcome-title {
@@ -83,14 +82,14 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
           gap: 10px;
           width: 100%;
           max-width: 100%;
-          margin-top: 16px;
+          margin-top: 10px;
         }
         .suggestion-chip {
           width: 100%;
           background-color: var(--color-surface-container-lowest);
           border: 1px solid var(--color-outline-variant);
-          border-radius: var(--radius-xl);
-          padding: 12px 16px;
+          border-radius: var(--radius-lg);
+          padding: 10px 13px;
           font: var(--text-body-sm);
           font-weight: 500;
           color: var(--color-on-surface-variant);
@@ -100,14 +99,11 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
           white-space: normal !important;
           word-break: break-word !important;
           line-height: 1.4 !important;
-          box-shadow: var(--shadow-sm);
         }
         .suggestion-chip:hover {
           background-color: var(--color-surface-container-low);
           border-color: var(--color-primary);
-          transform: translateY(-2px);
           color: var(--color-primary);
-          box-shadow: var(--shadow-md);
         }
       `}</style>
     </div>

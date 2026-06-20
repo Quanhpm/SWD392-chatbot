@@ -233,30 +233,27 @@ export const LoginPage: React.FC = () => {
 
         .login-shell {
           width: 100%;
-          max-width: 1100px;
+          max-width: 940px;
           display: grid;
           grid-template-columns: 1fr;
-          border-radius: var(--radius-3xl);
+          border-radius: var(--radius-2xl);
           overflow: hidden;
-          box-shadow: var(--shadow-xl);
+          box-shadow: var(--shadow-lg);
           border: 1px solid var(--color-outline-variant);
-          min-height: 640px;
+          min-height: 600px;
           background: var(--color-surface-container-lowest);
         }
 
         @media (min-width: 1024px) {
           .login-shell {
-            grid-template-columns: 7fr 5fr;
+            grid-template-columns: 1fr 1fr;
           }
         }
 
         /* ── Left Pane ── */
         .login-left {
           position: relative;
-          background: var(--color-primary);
-          background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCoeJfpCGqrS4EN1shYJXAJf_erDHdGbBSSS5qB4uomelSoVbvNCwsMTchYGkPkmImWP8RwYb7yzG2QTVu4LZBl9ZL6RsbR8vUOLZW3YQDat91gt4hdG3mFLXFmi4BxsqaS4aD1dkOCh7axp1vzRLuENR7UpyL2G8BMzBcmC24Uusunx2Debtk6Xykphedn7PivKEn77RVE6ZzTfTRjlwdU5k876C1xNscNSquIsmus8ohSkQL-VIx9LpFLq3cAttm4HBj721KFnj4');
-          background-size: cover;
-          background-position: center;
+          background: #0f172a;
           display: none;
           flex-direction: column;
         }
@@ -266,12 +263,12 @@ export const LoginPage: React.FC = () => {
         .login-left-overlay {
           position: absolute;
           inset: 0;
-          background: linear-gradient(135deg, rgba(0,35,111,0.82) 0%, rgba(0,106,97,0.55) 100%);
+          background: radial-gradient(circle at 20% 15%, rgba(37,99,235,.22), transparent 40%);
         }
         .login-left-content {
           position: relative;
           z-index: 1;
-          padding: 48px;
+          padding: 40px;
           height: 100%;
           display: flex;
           flex-direction: column;
@@ -297,15 +294,16 @@ export const LoginPage: React.FC = () => {
         }
         .login-feature-card {
           padding: 20px;
-          border-radius: var(--radius-xl);
-          border: 1px solid rgba(255,255,255,0.18);
+          border-radius: var(--radius-lg);
+          border: 1px solid rgba(255,255,255,0.12);
+          background: rgba(255,255,255,.04);
           color: white;
         }
         .login-feature-icon {
           font-size: 28px;
           margin-bottom: 10px;
           display: block;
-          color: rgba(255,255,255,0.88);
+          color: #93c5fd;
         }
         .login-feature-card h3 {
           font: var(--text-label-md);
@@ -336,7 +334,7 @@ export const LoginPage: React.FC = () => {
         .login-logo {
           width: 56px;
           height: 56px;
-          border-radius: var(--radius-xl);
+          border-radius: var(--radius-lg);
           background: var(--color-primary-fixed);
           display: flex;
           align-items: center;
@@ -359,7 +357,7 @@ export const LoginPage: React.FC = () => {
           display: flex;
           background: var(--color-surface-container-low);
           border: 1px solid var(--color-outline-variant);
-          border-radius: var(--radius-xl);
+          border-radius: var(--radius-lg);
           padding: 4px;
           margin-bottom: 24px;
           gap: 4px;
