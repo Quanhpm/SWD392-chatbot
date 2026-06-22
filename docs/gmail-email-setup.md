@@ -38,6 +38,7 @@ EMAIL_ENABLED=true
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=465
 SMTP_SECURE=true
+SMTP_CONNECTION_TIMEOUT_MS=10000
 SMTP_USER=edusmart.notification@gmail.com
 SMTP_PASS=abcdefghijklmnop
 EMAIL_FROM_NAME=EduSmart
@@ -47,6 +48,7 @@ EMAIL_FROM_ADDRESS=edusmart.notification@gmail.com
 Lưu ý:
 
 - `SMTP_PASS` là App Password, có thể dán có hoặc không có khoảng trắng; backend sẽ tự loại bỏ khoảng trắng.
+- `SMTP_CONNECTION_TIMEOUT_MS=10000` giới hạn thời gian chờ kết nối để thao tác admin không bị treo lâu khi Gmail lỗi.
 - Với Gmail cá nhân, `EMAIL_FROM_ADDRESS` nên giống `SMTP_USER`.
 - Không commit `backend/.env` hoặc App Password lên Git.
 - `FRONTEND_URL` phải là URL người dùng thật sự truy cập vì nút trong email sử dụng giá trị này.
@@ -57,6 +59,12 @@ Trong thư mục `backend` chạy:
 
 ```bash
 npm run email:test -- email-nguoi-nhan@example.com
+```
+
+Để gửi thử toàn bộ 6 template nghiệp vụ mà không thay đổi dữ liệu trong database:
+
+```bash
+npm run email:test -- email-nguoi-nhan@example.com --all
 ```
 
 Kết quả thành công:

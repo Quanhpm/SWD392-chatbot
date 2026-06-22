@@ -31,6 +31,7 @@ export interface Environment {
   smtpHost: string;
   smtpPort: number;
   smtpSecure: boolean;
+  smtpConnectionTimeoutMs: number;
   smtpUser?: string;
   smtpPass?: string;
   emailFromName: string;
@@ -101,6 +102,7 @@ export const env: Environment = {
   smtpHost: readString('SMTP_HOST', 'smtp.gmail.com'),
   smtpPort: readNumber('SMTP_PORT', 465),
   smtpSecure: readBoolean('SMTP_SECURE', true),
+  smtpConnectionTimeoutMs: readNumber('SMTP_CONNECTION_TIMEOUT_MS', 10_000),
   smtpUser,
   smtpPass,
   emailFromName: readString('EMAIL_FROM_NAME', 'EduSmart'),

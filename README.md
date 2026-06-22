@@ -100,6 +100,7 @@ se1939-rag-chatbot/
 | `SMTP_HOST` | `smtp.gmail.com` | SMTP server host |
 | `SMTP_PORT` | `465` | SMTP server port |
 | `SMTP_SECURE` | `true` | Use TLS from connection start |
+| `SMTP_CONNECTION_TIMEOUT_MS` | `10000` | SMTP connection/greeting timeout |
 | `SMTP_USER` | None | Gmail address used by EduSmart |
 | `SMTP_PASS` | None | Google App Password, not the normal Gmail password |
 | `EMAIL_FROM_NAME` | `EduSmart` | Sender display name |

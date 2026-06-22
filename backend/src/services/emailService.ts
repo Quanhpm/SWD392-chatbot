@@ -15,6 +15,11 @@ type Recipient = { email: string; fullName: string };
 type EmailContent = { subject: string; text: string; html: string };
 
 const roleLabels = { admin: 'Quản trị viên', teacher: 'Giảng viên', student: 'Sinh viên' } as const;
+const maskEmail = (email: string): string => {
+  const [local = '', domain = ''] = email.split('@');
+  if (!domain) return '***';
+  return `${local.slice(0, 1)}***@${domain}`;
+};
 
 export class EmailService {
   private readonly transporter: Transporter | null;
@@ -26,6 +31,9 @@ export class EmailService {
           port: env.smtpPort,
           secure: env.smtpSecure,
           auth: { user: env.smtpUser!, pass: env.smtpPass! },
+          connectionTimeout: env.smtpConnectionTimeoutMs,
+          greetingTimeout: env.smtpConnectionTimeoutMs,
+          socketTimeout: env.smtpConnectionTimeoutMs * 2,
         })
       : null;
   }
@@ -110,14 +118,14 @@ export class EmailService {
       const info = await this.transporter.sendMail({
         from: { name: env.emailFromName, address: env.emailFromAddress },
         to: { name: recipient.fullName, address: recipient.email },
-        subject: content.subject,
+        subject: content.subject.replace(/[\r\n]+/g, ' '),
         text: content.text,
         html: content.html,
       });
-      logger.info(`Email sent (${event}) to ${recipient.email}; messageId=${info.messageId}`);
+      logger.info(`Email sent (${event}) to ${maskEmail(recipient.email)}; messageId=${info.messageId}`);
       return true;
     } catch (error) {
-      logger.error(`Email failed (${event}) for ${recipient.email}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      logger.error(`Email failed (${event}) for ${maskEmail(recipient.email)}: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }

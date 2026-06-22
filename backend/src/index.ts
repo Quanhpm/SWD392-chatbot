@@ -11,8 +11,7 @@ import { subscriptionRoutes } from './routes/subscriptionRoutes.js';
 import { testSetRoutes } from './routes/testSetRoutes.js';
 import { adminRoutes } from './routes/adminRoutes.js';
 import { classRoutes } from './routes/classRoutes.js';
-import { subscriptionService } from './config/dependencies.js';
-import { documentService } from './config/dependencies.js';
+import { documentService, emailService, subscriptionService } from './config/dependencies.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { QuestionQuotaModel } from './models/QuestionQuota.js';
 import { logger } from './utils/logger.js';
@@ -50,7 +49,12 @@ app.get('/', (_req, res) => {
 });
 
 app.get('/api/health', (_req, res) => {
-  res.json({ success: true, status: 'ok', version: '2.0.0' });
+  res.json({
+    success: true,
+    status: 'ok',
+    version: '2.0.0',
+    services: { emailNotifications: emailService.isEnabled() ? 'enabled' : 'disabled' },
+  });
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
@@ -75,6 +79,9 @@ const startServer = async (): Promise<void> => {
   await DocumentModel.syncIndexes();
   await subscriptionService.expireSubscriptions();
   await subscriptionService.resetMonthlyQuotas();
+  if (emailService.isEnabled()) {
+    await emailService.verifyConnection();
+  }
 
   const interruptedDocuments = await DocumentModel.find({ status: 'uploaded' }).select('_id').lean().exec();
   for (const document of interruptedDocuments) {
