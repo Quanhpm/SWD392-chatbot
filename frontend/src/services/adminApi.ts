@@ -1,11 +1,13 @@
 import api from './api.js';
-import type { IUser, UserRole } from '../types/index.js';
+import type { IAuditLog, IEmailNotification, IUser, UserRole } from '../types/index.js';
 
 export interface AdminSummary {
   users: number;
   subjects: number;
-  classes: number;
-  pendingDocuments: number;
+  assignments: number;
+  processingDocuments: number;
+  queuedEmails: number;
+  failedEmails: number;
 }
 
 export const getSummary = async (): Promise<AdminSummary> => {
@@ -45,4 +47,22 @@ export const deactivateUser = async (id: string): Promise<void> => {
 
 export const activateUser = async (id: string): Promise<void> => {
   await api.post(`/admin/users/${id}/activate`);
+};
+
+export const getEmailNotifications = async (filters?: {
+  status?: IEmailNotification['status'];
+  limit?: number;
+}): Promise<IEmailNotification[]> => {
+  const response = await api.get<{ success: boolean; notifications: IEmailNotification[] }>('/admin/email-notifications', { params: filters });
+  return response.data.notifications;
+};
+
+export const retryEmailNotification = async (id: string): Promise<IEmailNotification> => {
+  const response = await api.post<{ success: boolean; notification: IEmailNotification }>(`/admin/email-notifications/${id}/retry`);
+  return response.data.notification;
+};
+
+export const getAuditLogs = async (limit = 100): Promise<IAuditLog[]> => {
+  const response = await api.get<{ success: boolean; logs: IAuditLog[] }>('/admin/audit-logs', { params: { limit } });
+  return response.data.logs;
 };

@@ -5,8 +5,15 @@ import { subscriptionService } from '../config/dependencies.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requireRole } from '../middleware/auth.js';
 import { validateRequest } from '../middleware/validation.js';
+import { recordAuditLog } from '../services/auditService.js';
 
 export const subscriptionRoutes = Router();
+
+const objectIdOf = (value: unknown): string => {
+  if (value && typeof value === 'object' && '_id' in value) return String((value as { _id: unknown })._id);
+  if (value && typeof value === 'object' && 'id' in value) return String((value as { id: unknown }).id);
+  return String(value);
+};
 
 const planNameValidator = [
   body('planName')
@@ -61,6 +68,13 @@ subscriptionRoutes.post(
     try {
       const { planName } = req.body as { planName: string };
       const subscription = await subscriptionService.subscribeToPlan(req.user!.id, planName);
+      await recordAuditLog({
+        actor: { id: req.user!.id, role: req.user!.role },
+        action: 'subscription.subscribe',
+        entityType: 'subscription',
+        entityId: objectIdOf(subscription),
+        metadata: { planName },
+      });
       res.status(201).json({ success: true, subscription });
     } catch (error) {
       next(error);
@@ -74,7 +88,14 @@ subscriptionRoutes.post(
  */
 subscriptionRoutes.post('/cancel', requireRole('student'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    await subscriptionService.cancelSubscription(req.user!.id);
+    const cancelled = await subscriptionService.cancelSubscription(req.user!.id);
+    await Promise.all(cancelled.map((subscription) => recordAuditLog({
+      actor: { id: req.user!.id, role: req.user!.role },
+      action: 'subscription.cancel',
+      entityType: 'subscription',
+      entityId: objectIdOf(subscription),
+      metadata: { planName: subscription.planName },
+    })));
     res.json({ success: true, message: 'Subscription cancelled.' });
   } catch (error) {
     next(error);
@@ -85,9 +106,9 @@ subscriptionRoutes.post('/cancel', requireRole('student'), async (req: Request, 
  * GET /api/subscriptions/quota
  * Get account-wide usage for the current UTC calendar month.
  */
-subscriptionRoutes.get('/quota', requireRole('student'), async (req: Request, res: Response, next: NextFunction) => {
+subscriptionRoutes.get('/quota', requireRole('student', 'teacher'), async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const quota = await subscriptionService.checkQuota(req.user!.id);
+    const quota = await subscriptionService.checkQuota(req.user!.id, req.user!.role);
     res.json({ success: true, quota });
   } catch (error) {
     next(error);

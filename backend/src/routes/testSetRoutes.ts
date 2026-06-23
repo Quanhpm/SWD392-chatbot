@@ -2,8 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { Router, type Request, type Response } from 'express';
+import { requireAuth, requireRole } from '../middleware/auth.js';
 
 export const testSetRoutes = Router();
+testSetRoutes.use(requireAuth, requireRole('admin'));
 
 const getTestSetPath = async (): Promise<string> => {
   const candidates = [

@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 
 import { chatService } from '../config/dependencies.js';
 import { requireAuth } from '../middleware/auth.js';
+import { chatRateLimiter } from '../middleware/rateLimit.js';
 import {
   createSessionWithDocumentValidators,
   mongoIdParamValidator,
@@ -18,10 +19,11 @@ chatRoutes.use(requireAuth);
  * POST /api/chat/sessions
  * Creates a session scoped to a document.
  * Body: { documentId, title? }
- * Student: verified enrolled in the document's subject → 403 if not.
+ * Access is verified against Subject-only document visibility rules.
  */
 chatRoutes.post(
   '/sessions',
+  chatRateLimiter,
   createSessionWithDocumentValidators,
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {
@@ -80,11 +82,12 @@ chatRoutes.get(
  * Body: { message }
  * Security enforcements (inside chatService.generateChatResponse):
  *   - Verifies session ownership
- *   - Verifies student enrollment in the selected document's subject
+ *   - Verifies Subject-only access to the selected document
  *   - Restricts chunk retrieval to the selected document
  */
 chatRoutes.post(
   '/sessions/:id/messages',
+  chatRateLimiter,
   sendMessageValidators,
   validateRequest,
   async (req: Request, res: Response, next: NextFunction) => {

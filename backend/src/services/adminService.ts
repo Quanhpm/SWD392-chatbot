@@ -1,4 +1,5 @@
-import { CourseClassModel } from '../models/CourseClass.js';
+import { SubjectAssignmentModel } from '../models/SubjectAssignment.js';
+import { SubjectModel } from '../models/Subject.js';
 import { UserModel, type IUser } from '../models/User.js';
 import { AppError } from '../middleware/errorHandler.js';
 import type { UserRole } from '../types/index.js';
@@ -106,13 +107,24 @@ export class AdminService {
       const activeAdmins = await UserModel.countDocuments({ role: 'admin', isActive: true }).exec();
       if (activeAdmins <= 1) throw new AppError('The last active admin cannot be deactivated.', 409);
     }
-    if (user.role === 'teacher' && await CourseClassModel.exists({ teacherId: user._id, status: 'active' })) {
-      throw new AppError('Reassign this teacher\'s active classes before deactivation.', 409);
-    }
-
     user.isActive = false;
     user.deactivatedAt = new Date();
     await user.save();
+    if (user.role === 'teacher') {
+      const assignments = await SubjectAssignmentModel.find({ teacherId: user._id, status: 'active' }).select('subjectId').lean().exec();
+      await SubjectAssignmentModel.updateMany(
+        { teacherId: user._id, status: 'active' },
+        { $set: { status: 'removed', removedAt: new Date() } },
+      ).exec();
+      const subjects = await SubjectModel.find({ _id: { $in: assignments.map((assignment) => assignment.subjectId) } })
+        .select('code name')
+        .lean()
+        .exec();
+      await Promise.all(subjects.map((subject) => this.emailService.sendTeacherSubjectAssignment(
+        { email: user.email, fullName: user.fullName },
+        { subjectCode: subject.code, subjectName: subject.name, assigned: false },
+      )));
+    }
   }
 
   async activateUser(id: string): Promise<void> {

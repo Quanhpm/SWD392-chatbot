@@ -1,5 +1,5 @@
 import api from './api.js';
-import type { ISubject } from '../types/index.js';
+import type { ISubject, ISubjectAssignment } from '../types/index.js';
 
 /** Fetches all subjects from the backend. */
 export const getSubjects = async (): Promise<ISubject[]> => {
@@ -22,4 +22,18 @@ export const updateSubject = async (id: string, input: Partial<Pick<ISubject, 'c
 export const deleteSubject = async (id: string): Promise<string> => {
   const response = await api.delete<{ success: boolean; message: string }>(`/subjects/${id}`);
   return response.data.message;
+};
+
+export const getSubjectTeachers = async (id: string): Promise<ISubjectAssignment[]> => {
+  const response = await api.get<{ success: boolean; assignments: ISubjectAssignment[] }>(`/subjects/${id}/teachers`);
+  return response.data.assignments;
+};
+
+export const assignTeacher = async (subjectId: string, teacherId: string): Promise<ISubjectAssignment> => {
+  const response = await api.post<{ success: boolean; assignment: ISubjectAssignment }>(`/subjects/${subjectId}/teachers`, { teacherId });
+  return response.data.assignment;
+};
+
+export const removeTeacher = async (subjectId: string, teacherId: string): Promise<void> => {
+  await api.delete(`/subjects/${subjectId}/teachers/${teacherId}`);
 };

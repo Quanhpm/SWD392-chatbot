@@ -27,17 +27,13 @@ export const DocumentStatus: React.FC<DocumentStatusProps> = ({ status }) => {
           `}</style>
         </Badge>
       );
-    case 'approved':
+    case 'ready':
       return (
         <Badge variant="success">
           <Icon name="check_circle" style={{ fontSize: '14px' }} />
-          <span>Approved</span>
+          <span>Ready</span>
         </Badge>
       );
-    case 'pending':
-      return <Badge variant="warning"><Icon name="hourglass_top" style={{ fontSize: '14px' }} /><span>Pending review</span></Badge>;
-    case 'rejected':
-      return <Badge variant="error"><Icon name="cancel" style={{ fontSize: '14px' }} /><span>Rejected</span></Badge>;
     case 'failed':
       return (
         <Badge variant="error">

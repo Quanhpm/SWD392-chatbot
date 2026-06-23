@@ -3,6 +3,7 @@ import { UserSubscriptionModel, type IUserSubscription } from '../models/UserSub
 import { QuestionQuotaModel } from '../models/QuestionQuota.js';
 import { AppError } from '../middleware/errorHandler.js';
 import { logger } from '../utils/logger.js';
+import type { UserRole } from '../types/index.js';
 
 export interface QuotaStatus {
   allowed: boolean;
@@ -84,7 +85,7 @@ export class SubscriptionService {
 
     const now = new Date();
     await UserSubscriptionModel.updateMany(
-      { userId, status: { $in: ['active', 'pending'] } },
+      { userId, status: 'active' },
       { status: 'cancelled' },
     );
 
@@ -103,24 +104,26 @@ export class SubscriptionService {
   }
 
   /** Cancel current subscription */
-  async cancelSubscription(userId: string): Promise<void> {
-    const result = await UserSubscriptionModel.updateMany(
-      { userId, status: { $in: ['active', 'pending'] } },
-      { status: 'cancelled' },
-    );
-    if (result.modifiedCount === 0) {
+  async cancelSubscription(userId: string): Promise<IUserSubscription[]> {
+    const activeSubscriptions = await UserSubscriptionModel.find({ userId, status: 'active' }).lean().exec();
+    if (activeSubscriptions.length === 0) {
       throw new AppError('No active subscription to cancel.', 404);
     }
+    await UserSubscriptionModel.updateMany(
+      { _id: { $in: activeSubscriptions.map((subscription) => subscription._id) } },
+      { status: 'cancelled' },
+    );
+    return activeSubscriptions;
   }
 
   /**
    * Check the user's account-wide quota for the current UTC calendar month.
    * This is the KEY method called before each chat message.
    */
-  async checkQuota(userId: string): Promise<QuotaStatus> {
-    const plan = await this.getEffectivePlan(userId);
-    const planName = plan.name;
-    const limit = plan.questionLimit;
+  async checkQuota(userId: string, role: UserRole = 'student'): Promise<QuotaStatus> {
+    const plan = role === 'teacher' ? null : await this.getEffectivePlan(userId);
+    const planName = role === 'teacher' ? 'teacher' : plan!.name;
+    const limit = role === 'teacher' ? 100 : plan!.questionLimit;
     const period = currentUtcMonth();
     const quota = await QuestionQuotaModel.findOne({ userId, periodKey: period.periodKey }).lean().exec();
 
@@ -138,8 +141,10 @@ export class SubscriptionService {
   }
 
   /** Atomically reserve one monthly question so parallel requests cannot exceed the plan limit. */
-  async reserveQuota(userId: string): Promise<QuotaStatus> {
-    const plan = await this.getEffectivePlan(userId);
+  async reserveQuota(userId: string, role: UserRole = 'student'): Promise<QuotaStatus> {
+    const plan = role === 'teacher' ? null : await this.getEffectivePlan(userId);
+    const limit = role === 'teacher' ? 100 : plan!.questionLimit;
+    const planName = role === 'teacher' ? 'teacher' : plan!.name;
     const period = currentUtcMonth();
     const now = new Date();
 
@@ -163,13 +168,13 @@ export class SubscriptionService {
     }
 
     const quota = await QuestionQuotaModel.findOneAndUpdate(
-      { userId, periodKey: period.periodKey, questionCount: { $lt: plan.questionLimit } },
+      { userId, periodKey: period.periodKey, questionCount: { $lt: limit } },
       { $inc: { questionCount: 1 }, $set: { lastQuestionAt: now } },
       { new: true },
     ).lean().exec();
 
     if (!quota) {
-      const current = await this.checkQuota(userId);
+      const current = await this.checkQuota(userId, role);
       throw new AppError(
         `Monthly question limit reached (${current.used}/${current.limit} for ${current.planName} plan).`,
         403,
@@ -177,11 +182,11 @@ export class SubscriptionService {
     }
 
     return {
-      allowed: quota.questionCount < plan.questionLimit,
+      allowed: quota.questionCount < limit,
       used: quota.questionCount,
-      limit: plan.questionLimit,
-      planName: plan.name,
-      remaining: Math.max(0, plan.questionLimit - quota.questionCount),
+      limit,
+      planName,
+      remaining: Math.max(0, limit - quota.questionCount),
       ...period,
     };
   }

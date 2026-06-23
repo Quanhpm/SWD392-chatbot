@@ -1,56 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.js';
+import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.js';
-import { getClasses, getRoster } from '../services/classApi.js';
-import { generateDocumentAssist } from '../services/documentApi.js';
-import type { IClassEnrollment, ICourseClass, IDocument, ISubject } from '../types/index.js';
+import { useAuth } from '../context/AuthContext.js';
+import { deleteDocument, retryDocument, updateDocument } from '../services/documentApi.js';
+import type { IDocument } from '../types/index.js';
 
-const subjectOf = (courseClass: ICourseClass): ISubject | undefined => typeof courseClass.subjectId === 'string' ? undefined : courseClass.subjectId;
-const scopeOf = (document: IDocument): string => document.visibility === 'class-restricted'
-  ? (document.classIds ?? []).map((value) => typeof value === 'string' ? value : value.code).join(', ') || 'Chưa chọn lớp'
-  : 'Toàn môn';
+const ownerId = (document: IDocument): string | undefined => typeof document.uploadedBy === 'string' ? document.uploadedBy : document.uploadedBy?._id ?? document.uploadedBy?.id;
+const statusLabel = { uploaded: 'Đã tải lên', processing: 'Đang xử lý', ready: 'Sẵn sàng', failed: 'Xử lý lỗi' } as const;
 
 export const TeacherDashboard: React.FC = () => {
-  const navigate = useNavigate();
-  const { state: authState } = useAuth();
-  const { state: appState, dispatch, refreshDocuments } = useApp();
-  const [classes, setClasses] = useState<ICourseClass[]>([]);
-  const [selectedClass, setSelectedClass] = useState<ICourseClass | null>(null);
-  const [roster, setRoster] = useState<IClassEnrollment[]>([]);
+  const { state, dispatch, refreshDocuments } = useApp();
+  const { state: auth } = useAuth();
   const [message, setMessage] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-
-  useEffect(() => { void getClasses().then(setClasses); }, []);
-
-  const openRoster = async (courseClass: ICourseClass) => {
-    setSelectedClass(courseClass);
-    setRoster(await getRoster(courseClass._id));
+  const myId = auth.user?._id ?? auth.user?.id;
+  const myDocuments = state.documents.filter((doc) => ownerId(doc) === myId);
+  const run = async (action: () => Promise<void>, success: string) => { try { await action(); setMessage(success); await refreshDocuments(); } catch (error) { setMessage(error instanceof Error ? error.message : 'Thao tác thất bại.'); } };
+  const edit = async (document: IDocument) => {
+    const originalName = prompt('Tên hiển thị tài liệu', document.originalName); if (!originalName) return;
+    const chapterTitle = prompt('Tên chương', document.chapterTitle); if (!chapterTitle) return;
+    const chapter = Number(prompt('Số chương', String(document.chapter))); if (!Number.isInteger(chapter) || chapter < 0) return;
+    await run(async () => { const updated = await updateDocument(document._id, { originalName, chapter, chapterTitle }); dispatch({ type: 'UPDATE_DOCUMENT', payload: updated }); }, 'Đã cập nhật metadata.');
   };
 
-  const documents = appState.documents as IDocument[];
-  const statusLabel: Record<string, string> = {
-    uploaded: 'Đã tải lên', processing: 'Đang xử lý', pending: 'Chờ admin duyệt', approved: 'Đã duyệt', rejected: 'Bị từ chối', failed: 'Xử lý lỗi',
-  };
-
-  return <div className="teacher-workspace">
-    <section className="teacher-hero"><div><span>TEACHER WORKSPACE</span><h1>Chào {authState.user?.fullName || authState.user?.username}</h1><p>Quản lý lớp được phân công và phạm vi truy cập của từng tài liệu.</p></div><button className="btn-primary" onClick={() => dispatch({ type: 'SET_UPLOAD_MODAL', payload: true })}><span className="material-symbols-outlined">upload_file</span>Tải tài liệu</button></section>
+  return <div className="teacher-page">
+    <header><div><span>TEACHER WORKSPACE</span><h1>Quản lý nội dung môn học</h1><p>Bạn chỉ có thể upload và quản lý tài liệu của mình trong môn đang được phân công.</p></div><button className="btn-primary" onClick={() => dispatch({ type: 'SET_UPLOAD_MODAL', payload: true })}>Upload tài liệu</button></header>
     {message && <div className="teacher-message">{message}</div>}
-    <div className="teacher-metrics"><article><strong>{classes.filter((item) => item.status === 'active').length}</strong><span>Lớp active</span></article><article><strong>{documents.filter((item) => item.status === 'approved').length}</strong><span>Tài liệu đã duyệt</span></article><article><strong>{documents.filter((item) => item.status === 'pending').length}</strong><span>Đang chờ duyệt</span></article><article><strong>{documents.filter((item) => item.status === 'rejected').length}</strong><span>Cần upload lại</span></article></div>
-
-    <section className="teacher-section"><div className="teacher-title"><div><h2>Lớp được phân công</h2><p>Join code chỉ hiển thị cho admin và giảng viên của lớp.</p></div></div>
-      <div className="teacher-class-grid">{classes.map((courseClass) => <article key={courseClass._id} className="teacher-class-card"><div><span className={`teacher-status ${courseClass.status}`}>{courseClass.status}</span><h3>{courseClass.code}</h3><p>{courseClass.name}</p><small>{subjectOf(courseClass)?.code} · {subjectOf(courseClass)?.name}</small></div><div className="join-code"><span>Join code</span><code>{courseClass.joinCode}</code></div><div className="teacher-actions"><button onClick={() => void openRoster(courseClass)}>Xem roster</button><button onClick={() => navigate(`/study/${subjectOf(courseClass)?._id ?? courseClass.subjectId}`)}>Vào môn học</button></div></article>)}</div>
-      {classes.length === 0 && <div className="teacher-empty">Admin chưa phân công lớp active cho tài khoản này.</div>}
-    </section>
-
-    {selectedClass && <section className="teacher-section"><div className="teacher-title"><h2>Roster · {selectedClass.code}</h2><button onClick={() => setSelectedClass(null)}>Đóng</button></div><div className="roster-grid">{roster.map((item) => <div key={item._id}><strong>{item.studentId.fullName}</strong><span>{item.studentId.userCode}</span><small>{item.studentId.email}</small></div>)}</div>{roster.length === 0 && <p>Lớp chưa có sinh viên.</p>}</section>}
-
-    <section className="teacher-section"><div className="teacher-title"><div><h2>Tài liệu của môn đang dạy</h2><p>Tài liệu mới sẽ chuyển sang pending sau khi xử lý xong.</p></div><button onClick={() => void refreshDocuments()}>Làm mới</button></div>
-      <div className="teacher-table-wrap"><table><thead><tr><th>Tài liệu</th><th>Môn</th><th>Phạm vi</th><th>Trạng thái</th><th>Study assist</th></tr></thead><tbody>{documents.map((document) => <tr key={document._id}><td><strong>{document.originalName}</strong><small>Chương {document.chapter}: {document.chapterTitle}</small>{document.rejectionReason && <em>{document.rejectionReason}</em>}</td><td>{document.subject}</td><td>{scopeOf(document)}</td><td><span className={`doc-state ${document.status}`}>{statusLabel[document.status]}</span></td><td>{['pending', 'approved'].includes(document.status) ? <button disabled={busyId === document._id} onClick={() => { setBusyId(document._id); void generateDocumentAssist(document._id).then(() => setMessage('Đã tạo Study Assist cho tài liệu.')).catch((error) => setMessage(error instanceof Error ? error.message : 'Không thể tạo Study Assist.')).finally(() => setBusyId(null)); }}>{busyId === document._id ? 'Đang tạo...' : 'Tạo/cập nhật'}</button> : 'Không khả dụng'}</td></tr>)}</tbody></table></div>
-    </section><TeacherStyle />
+    <section className="teacher-metrics"><article><strong>{state.subjects.length}</strong><small>Môn được phân công</small></article><article><strong>{myDocuments.length}</strong><small>Tài liệu của tôi</small></article><article><strong>{myDocuments.filter((doc) => doc.status === 'ready').length}</strong><small>Đã sẵn sàng</small></article><article><strong>{myDocuments.filter((doc) => doc.status === 'failed').length}</strong><small>Cần xử lý</small></article></section>
+    <section className="teacher-card"><div className="section-title"><div><h2>Môn học được phân công</h2><p>Admin có thể gán nhiều giảng viên cho cùng một môn.</p></div></div><div className="subject-pills">{state.subjects.map((subject) => <span key={subject._id}><strong>{subject.code}</strong>{subject.name}</span>)}{state.subjects.length === 0 && <p>Chưa được phân công môn học.</p>}</div></section>
+    <section className="teacher-card"><div className="section-title"><div><h2>Tài liệu của tôi</h2><p>Tài liệu tự công bố sau khi xử lý thành công.</p></div><button onClick={() => void refreshDocuments()}>Làm mới</button></div><div className="teacher-table"><table><thead><tr><th>Tài liệu</th><th>Môn</th><th>Trạng thái</th><th>Chunks</th><th>Thao tác</th></tr></thead><tbody>{myDocuments.map((document) => <tr key={document._id}><td><strong>{document.originalName}</strong><small>Chương {document.chapter}: {document.chapterTitle}</small>{document.errorMessage && <em>{document.errorMessage}</em>}</td><td>{document.subject}</td><td><span className={`state ${document.status}`}>{statusLabel[document.status]}</span></td><td>{document.totalChunks}</td><td><div className="row-actions"><button onClick={() => void edit(document)}>Sửa</button>{document.status === 'failed' && <button onClick={() => void run(() => retryDocument(document._id), 'Đã chạy lại xử lý.')}>Retry</button>}<button className="danger" disabled={document.status === 'processing'} onClick={() => { if (confirm('Xóa tài liệu và toàn bộ lịch sử chat liên quan?')) void run(() => deleteDocument(document._id).then(() => undefined), 'Đã xóa tài liệu.'); }}>Xóa</button></div></td></tr>)}</tbody></table>{myDocuments.length === 0 && <div className="empty">Bạn chưa upload tài liệu.</div>}</div></section>
+    <style>{`.teacher-page{width:100%;max-width:1250px;margin:auto;padding:28px}.teacher-page header{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--color-outline-variant);padding-bottom:20px}.teacher-page header span{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--color-primary)}.teacher-page h1{font-size:28px;margin:5px 0}.teacher-page header p,.section-title p{color:#64748b}.teacher-message{margin:14px 0;padding:10px 13px;background:#eff6ff;color:#1e40af;border-radius:8px}.teacher-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.teacher-metrics article,.teacher-card{background:#fff;border:1px solid var(--color-outline-variant);border-radius:12px;padding:18px}.teacher-metrics strong{display:block;font-size:27px}.teacher-metrics small{color:#64748b}.teacher-card{margin-top:14px}.section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.section-title h2{font-size:17px}.section-title button,.row-actions button{border:1px solid #dbe1e8;background:white;border-radius:7px;padding:6px 9px}.subject-pills{display:flex;gap:8px;flex-wrap:wrap}.subject-pills span{display:flex;gap:7px;padding:9px 11px;border:1px solid #e2e8f0;border-radius:8px;color:#475569}.subject-pills strong{color:#1d4ed8}.teacher-table{overflow:auto}.teacher-table table{width:100%;border-collapse:collapse}.teacher-table th,.teacher-table td{text-align:left;padding:11px;border-bottom:1px solid #eef2f7}.teacher-table td small,.teacher-table td em{display:block;color:#64748b;margin-top:3px}.teacher-table td em{color:#b91c1c}.state{font-size:11px;font-weight:700;padding:4px 7px;border-radius:20px;background:#f1f5f9}.state.ready{background:#ecfdf5;color:#047857}.state.failed{background:#fef2f2;color:#b91c1c}.row-actions{display:flex;gap:5px}.row-actions .danger{color:#b91c1c}.empty{padding:35px;text-align:center;color:#64748b}@media(max-width:800px){.teacher-metrics{grid-template-columns:1fr 1fr}}@media(max-width:560px){.teacher-page{padding:18px}.teacher-page header{align-items:flex-start;gap:14px;flex-direction:column}.teacher-metrics{grid-template-columns:1fr}}`}</style>
   </div>;
 };
-
-const TeacherStyle = () => <style>{`
-.teacher-workspace{width:100%;padding:28px;max-width:1450px;margin:auto}.teacher-hero{padding:0 0 22px;border-bottom:1px solid var(--color-outline-variant);display:flex;justify-content:space-between;align-items:flex-end}.teacher-hero>div>span{font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--color-primary)}.teacher-hero h1{font-size:28px;letter-spacing:-.03em;margin:4px 0}.teacher-hero p{color:var(--color-on-surface-variant)}.teacher-hero .btn-primary{display:flex;align-items:center;gap:7px}.teacher-message{margin:14px 0;padding:10px 13px;background:#f0fdf4;color:#166534;border:1px solid #dcfce7;border-radius:8px}.teacher-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.teacher-metrics article,.teacher-section{background:#fff;border:1px solid var(--color-outline-variant);border-radius:12px;padding:18px;box-shadow:var(--shadow-sm)}.teacher-metrics strong{font-size:28px;letter-spacing:-.03em;color:#0f172a;display:block}.teacher-metrics span{color:var(--color-on-surface-variant)}.teacher-section{margin-top:14px}.teacher-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.teacher-title h2{font-size:17px}.teacher-title p{color:var(--color-on-surface-variant);margin-top:3px}.teacher-title button,.teacher-actions button,.teacher-table-wrap button{min-height:34px;border:1px solid var(--color-outline-variant);background:white;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:600;color:#334155}.teacher-title button:hover,.teacher-actions button:hover,.teacher-table-wrap button:hover{background:#f8fafc;border-color:#cbd5e1}.teacher-class-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.teacher-class-card{border:1px solid #e2e8f0;border-radius:10px;padding:15px;display:flex;flex-direction:column;gap:12px}.teacher-status{font-size:10px;font-weight:700;text-transform:uppercase;background:#f1f5f9;color:#475569;padding:3px 7px;border-radius:20px}.teacher-status.active{background:#f0fdf4;color:#166534}.join-code{display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #eef2f7;padding:9px;border-radius:8px}.join-code code{font-size:17px;letter-spacing:2px}.teacher-actions{display:flex;gap:7px}.teacher-empty{padding:30px;text-align:center;color:#64748b}.roster-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.roster-grid div{background:#f8fafc;border:1px solid #eef2f7;padding:11px;border-radius:8px}.roster-grid span,.roster-grid small{display:block}.teacher-table-wrap{overflow:auto}td small,td em{display:block;color:#64748b;margin-top:4px}.doc-state{font-size:11px;font-weight:600;padding:4px 8px;border-radius:20px;background:#f1f5f9;color:#475569}.doc-state.approved{background:#f0fdf4;color:#166534}.doc-state.pending{background:#fffbeb;color:#92400e}.doc-state.rejected,.doc-state.failed{background:#fef2f2;color:#991b1b}@media(max-width:950px){.teacher-metrics,.teacher-class-grid,.roster-grid{grid-template-columns:1fr 1fr}.teacher-workspace{padding:18px}}@media(max-width:600px){.teacher-metrics,.teacher-class-grid,.roster-grid{grid-template-columns:1fr}.teacher-hero{align-items:flex-start;gap:16px;flex-direction:column}}
-`}</style>;

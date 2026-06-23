@@ -1,40 +1,28 @@
-import { env } from '../config/environment.js';
 import { EmailService } from '../services/emailService.js';
-import { logger } from './logger.js';
 
-const args = process.argv.slice(2);
-const sendAllTemplates = args.includes('--all');
-const recipient = args.find((value) => !value.startsWith('--'))?.trim() || env.smtpUser;
-const emailService = new EmailService();
+const recipient = process.argv[2];
+const sendAll = process.argv.includes('--all');
 
 if (!recipient) {
-  logger.error('Recipient is required. Usage: npm run email:test -- recipient@example.com [--all]');
-  process.exitCode = 1;
-} else {
-  const connected = await emailService.verifyConnection();
-  const commonRecipient = { email: recipient, fullName: 'Nguyễn Văn Test' };
-  const results = connected && sendAllTemplates
-    ? await Promise.all([
-        emailService.sendAccountCreated({ ...commonRecipient, username: 'student_test', role: 'student' }, 'Temporary@123'),
-        emailService.sendPasswordReset({ ...commonRecipient, username: 'student_test' }, 'NewPassword@123'),
-        emailService.sendTeacherAssigned(commonRecipient, {
-          classCode: 'SE1939-01', className: 'Software Modeling 01', subjectCode: 'SE1939', subjectName: 'Software Modeling',
-        }),
-        emailService.sendStudentEnrolled(commonRecipient, {
-          classCode: 'SE1939-01', className: 'Software Modeling 01', subjectCode: 'SE1939', subjectName: 'Software Modeling',
-        }),
-        emailService.sendDocumentReviewed(commonRecipient, {
-          documentName: 'Chapter 1.pdf', subjectName: 'Software Modeling', chapter: 1, chapterTitle: 'Unified Process', approved: true,
-        }),
-        emailService.sendDocumentReviewed(commonRecipient, {
-          documentName: 'Chapter 2.pdf', subjectName: 'Software Modeling', chapter: 2, chapterTitle: 'Use Case', approved: false,
-          reason: 'Cần bổ sung nguồn trích dẫn.',
-        }),
-      ])
-    : [connected && await emailService.sendTest(recipient)];
-  if (!connected || results.some((sent) => !sent)) {
-    process.exitCode = 1;
-  } else {
-    logger.info(`${results.length} test email(s) delivered successfully.`);
-  }
+  console.error('Usage: npm run email:test -- recipient@example.com [--all]');
+  process.exit(1);
 }
+
+const emailService = new EmailService();
+const run = async (): Promise<void> => {
+  if (!(await emailService.verifyConnection())) process.exit(1);
+  if (!sendAll) {
+    if (!(await emailService.sendTest(recipient))) process.exit(1);
+    return;
+  }
+  const contact = { email: recipient, fullName: 'Nguyễn Văn Test' };
+  const results: boolean[] = [];
+  results.push(await emailService.sendAccountCreated({ ...contact, username: 'test_user', role: 'student' }, 'Temporary@123'));
+  results.push(await emailService.sendPasswordReset({ ...contact, username: 'test_user' }, 'Reset@123'));
+  results.push(await emailService.sendTeacherSubjectAssignment(contact, { subjectCode: 'SWD392', subjectName: 'Software Architecture and Design', assigned: true }));
+  results.push(await emailService.sendTeacherSubjectAssignment(contact, { subjectCode: 'SWD392', subjectName: 'Software Architecture and Design', assigned: false }));
+  console.log(`Email templates sent: ${results.filter(Boolean).length}/${results.length}`);
+  if (results.some((sent) => !sent)) process.exit(1);
+};
+
+void run();

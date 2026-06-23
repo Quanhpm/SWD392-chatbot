@@ -1,41 +1,24 @@
-# Use Case Diagram - Smart RAG Learning Platform
-
-Tài liệu này mô tả workflow hiện tại sau khi bổ sung quản trị lớp, duyệt tài liệu, class privacy và quota tháng.
+# Use cases — Subject-only RAG
 
 ## Actors
 
-| Actor | Trách nhiệm |
-| --- | --- |
-| Admin | Quản lý tài khoản, môn, lớp, roster và duyệt/từ chối tài liệu. |
-| Teacher | Quản lý lớp được phân công, upload tài liệu theo phạm vi và tạo Study Assist. |
-| Student | Tham gia lớp, đọc tài liệu đúng phạm vi, chat và chọn gói. |
-| Gemini API | Tạo embedding, Study Assist và câu trả lời RAG. |
-| MongoDB | Lưu dữ liệu học vụ, tài liệu, chunks, chat, subscription và quota tháng. |
+| Actor | Responsibilities |
+|---|---|
+| Admin | Manage accounts and subjects, assign teachers, manage all documents, run evaluation, chat without quota. |
+| Teacher | View assigned subjects, upload documents, manage their own documents, and chat up to 100 questions per UTC month. |
+| Student | View all active subjects and ready documents, chat using the current plan quota. |
+| Gemini API | Generate embeddings and RAG answers grounded in document chunks. |
+| SMTP/Gmail | Dispatch queued account and subject-assignment notifications. |
 
-## Main Use Cases
+## Main flows
 
-| Nhóm | Use case | Quy tắc chính |
-| --- | --- | --- |
-| Admin | Quản lý môn và lớp | Class thuộc một subject, có một teacher phụ trách và roster riêng. |
-| Admin | Duyệt tài liệu | Admin xem file, metadata và phạm vi lớp trước khi approve/reject. |
-| Teacher | Upload tài liệu | Chọn `subject-wide` hoặc `class-restricted`; lớp được chọn phải active, cùng subject và do teacher phụ trách. |
-| Student | Tham gia lớp | Enrollment chỉ cấp quyền khi enrollment, class và subject đều active. |
-| Learning | Đọc tài liệu | Chỉ tài liệu approved và đúng phạm vi class mới xuất hiện. |
-| Learning | Study Assist | Teacher uploader tạo; student chỉ đọc khi tài liệu approved và đúng phạm vi. |
-| Chat | Chat theo document | Retrieval chỉ dùng chunks của document được chọn; quyền được kiểm tra lại khi tạo, mở và gửi chat. |
-| Quota | Kiểm tra quota tháng | Tổng câu hỏi của user trên mọi tài liệu trong tháng UTC; Free/Plus/Pro = 50/300/1000. |
-| Subscription | Chọn gói | Demo kích hoạt ngay; đổi gói không reset quota đã dùng trong tháng. |
+1. Admin creates a subject and assigns one or more active teachers.
+2. An assigned teacher uploads a PDF, DOCX, or PPTX document to that subject.
+3. The system processes the file through `uploaded → processing → ready | failed`.
+4. A ready document is published automatically to authenticated students.
+5. A user creates a document chat and receives grounded answers with citations.
+6. The system reserves quota atomically for teachers and students; admins are unlimited.
+7. Email notifications are queued, sent, retried if needed, and visible to Admin.
+8. Document upload, metadata update, and delete actions are recorded in audit logs.
 
-## Business Rules
-
-- Tài liệu cũ được migrate thành `subject-wide` để tương thích ngược.
-- `class-restricted` phải có ít nhất một `classId`; không cho phép teacher chọn lớp của teacher khác.
-- Mất enrollment hoặc class bị archive thì student mất quyền đọc tài liệu restricted và lịch sử chat liên quan.
-- Quota có unique key `userId + periodKey`; chia nhỏ file, đổi subject hay đổi class không tạo thêm lượt hỏi.
-- Quota được reserve nguyên tử trước khi chạy AI và hoàn lại nếu pipeline lỗi.
-- Xóa/reject document không làm giảm quota tháng đã sử dụng.
-- RAG chỉ retrieve chunks của document đang chọn và không fallback sang kiến thức chung; thiếu context thì trả refusal message.
-
-## PlantUML Source
-
-[`docs/use-case-diagram.puml`](./use-case-diagram.puml)
+There is no Class, Enrollment, roster, join code, subject password, document approval, quiz, flashcard, or Study Assist flow.

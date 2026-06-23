@@ -1,29 +1,11 @@
 import type { NextFunction, Request, Response } from 'express';
 import { body, param, validationResult } from 'express-validator';
+import fs from 'node:fs';
 
 // ─── Existing Validators ─────────────────────────────────────────────────────
 
 export const uploadDocumentValidators = [
   body('subjectId').isMongoId().withMessage('A valid subjectId is required.'),
-  body('visibility')
-    .isIn(['subject-wide', 'class-restricted'])
-    .withMessage('visibility is required and must be subject-wide or class-restricted.'),
-  body('classIds')
-    .optional()
-    .custom((value) => {
-      let parsed: unknown = value;
-      if (typeof value === 'string') {
-        try {
-          parsed = JSON.parse(value);
-        } catch {
-          throw new Error('classIds must be a JSON array.');
-        }
-      }
-      if (!Array.isArray(parsed) || parsed.some((id) => typeof id !== 'string' || !/^[a-f\d]{24}$/i.test(id))) {
-        throw new Error('classIds must contain valid MongoDB ids.');
-      }
-      return true;
-    }),
   body('chapter').isInt({ min: 0 }).withMessage('Chapter must be a non-negative integer.'),
   body('chapterTitle').trim().notEmpty().withMessage('Chapter title is required.'),
 ];
@@ -56,6 +38,10 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
     return;
   }
 
+  if (req.file?.path) {
+    fs.unlink(req.file.path, () => undefined);
+  }
+
   res.status(400).json({
     success: false,
     error: errors
@@ -66,26 +52,6 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
 };
 
 // ─── Auth Validators ──────────────────────────────────────────────────────────
-
-export const registerValidators = [
-  body('username')
-    .trim()
-    .isLength({ min: 3, max: 30 })
-    .withMessage('Username must be 3-30 characters.')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username can only contain letters, numbers, and underscores.'),
-  body('password')
-    .isLength({ min: 6, max: 100 })
-    .withMessage('Password must be 6-100 characters.'),
-  body('fullName').trim().isLength({ min: 2, max: 100 }).withMessage('Full name must be 2-100 characters.'),
-  body('email').isEmail().normalizeEmail().withMessage('A valid email is required.'),
-  body('userCode')
-    .trim()
-    .isLength({ min: 3, max: 30 })
-    .matches(/^[a-zA-Z0-9_-]+$/)
-    .withMessage('User code must be 3-30 letters, numbers, underscores, or hyphens.'),
-  body('role').optional().equals('student').withMessage('Public registration only supports the student role.'),
-];
 
 export const loginValidators = [
   body('username').trim().notEmpty().withMessage('Username is required.'),

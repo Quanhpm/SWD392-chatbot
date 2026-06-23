@@ -42,13 +42,13 @@ export const QuotaIndicator: React.FC<QuotaIndicatorProps> = ({ quota, loading }
               Bạn đã sử dụng hết {quota.limit} câu hỏi trong tháng {quota.periodKey} của gói <strong>{quota.planName}</strong>.
             </p>
           </div>
-          <button
+          {quota.planName !== 'teacher' && <button
             className="quota-upgrade-btn"
             onClick={() => navigate('/pricing')}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>rocket_launch</span>
             Nâng cấp gói
-          </button>
+          </button>}
         </div>
       ) : (
         <div className="quota-compact">

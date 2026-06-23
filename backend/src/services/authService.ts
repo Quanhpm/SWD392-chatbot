@@ -34,52 +34,6 @@ export class AuthService {
     );
   }
 
-  /** Registers a new user. Password is hashed by the User model pre-save hook. */
-  async register(input: {
-    username: string;
-    password: string;
-    fullName: string;
-    email: string;
-    userCode: string;
-  }): Promise<AuthResult> {
-    const existing = await UserModel.findOne({
-      $or: [
-        { username: input.username.trim() },
-        { email: input.email.trim().toLowerCase() },
-        { userCode: input.userCode.trim().toUpperCase() },
-      ],
-    }).lean().exec();
-    if (existing) {
-      throw new AppError('Username, email, or user code already exists.', 409);
-    }
-
-    const user = await UserModel.create({
-      username: input.username.trim(),
-      password: input.password,
-      role: 'student',
-      fullName: input.fullName.trim(),
-      email: input.email.trim().toLowerCase(),
-      userCode: input.userCode.trim().toUpperCase(),
-      isActive: true,
-    });
-
-    const token = this.generateToken(user);
-    logger.info(`User registered: ${user.username} (${user.role})`);
-
-    return {
-      user: {
-        id: user._id.toString(),
-        username: user.username,
-        role: user.role as UserRole,
-        fullName: user.fullName,
-        email: user.email,
-        userCode: user.userCode,
-        isActive: user.isActive,
-      },
-      token,
-    };
-  }
-
   /** Authenticates a user and returns a JWT token. */
   async login(username: string, password: string): Promise<AuthResult> {
     const user = await UserModel.findOne({ username: username.trim() }).exec();

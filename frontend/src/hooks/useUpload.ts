@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react';
 import { useDocuments } from './useDocuments.js';
-import type { DocumentVisibility } from '../types/index.js';
 
 export const useUpload = (onSuccess?: () => void) => {
   const { uploadFile } = useDocuments();
@@ -58,8 +57,6 @@ export const useUpload = (onSuccess?: () => void) => {
 
   const startUpload = async (
     subjectId: string,
-    visibility: DocumentVisibility,
-    classIds: string[],
     chapter: number,
     chapterTitle: string,
   ) => {
@@ -73,7 +70,7 @@ export const useUpload = (onSuccess?: () => void) => {
     setError(null);
 
     try {
-      await uploadFile(file, subjectId, visibility, classIds, chapter, chapterTitle, (percent) => {
+      await uploadFile(file, subjectId, chapter, chapterTitle, (percent) => {
         setProgress(percent);
         if (percent === 100) {
           setStatus('processing');

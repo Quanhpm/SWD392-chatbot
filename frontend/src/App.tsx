@@ -62,9 +62,9 @@ const AuthenticatedApp: React.FC = () => {
             />
 
             {/* Shared routes */}
-            <Route path="/chat" element={role === 'admin' ? <Navigate to="/admin" replace /> : <ChatPage />} />
-            <Route path="/chat/:sessionId" element={role === 'admin' ? <Navigate to="/admin" replace /> : <ChatPage />} />
-            <Route path="/study/:subjectId" element={role === 'admin' ? <Navigate to="/admin" replace /> : <StudyPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/chat/:sessionId" element={<ChatPage />} />
+            <Route path="/study/:subjectId" element={<StudyPage />} />
             <Route path="/documents" element={role === 'admin' ? <Navigate to="/admin" replace /> : <DocumentsPage />} />
             <Route path="/pricing" element={role === 'student' ? <PricingPage /> : <Navigate to="/" replace />} />
 

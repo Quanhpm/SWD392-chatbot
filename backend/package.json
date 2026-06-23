@@ -7,9 +7,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "migrate:admin-classes": "tsx src/utils/migrateAdminClasses.ts",
-    "migrate:admin-classes:dry": "tsx src/utils/migrateAdminClasses.ts --dry-run",
-    "migrate:privacy-quota": "tsx src/utils/migratePrivacyAndMonthlyQuota.ts",
+    "migrate:subject-only": "tsx src/utils/migrateSubjectOnly.ts",
+    "migrate:subject-only:dry": "tsx src/utils/migrateSubjectOnly.ts --dry-run",
     "email:test": "tsx src/utils/testEmail.ts"
   },
   "dependencies": {

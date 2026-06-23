@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.js';
 import * as docApi from '../services/documentApi.js';
-import type { DocumentVisibility, IDocument } from '../types/index.js';
+import type { IDocument } from '../types/index.js';
 
 export const useDocuments = () => {
   const { state, dispatch, refreshDocuments } = useApp();
@@ -54,8 +54,6 @@ export const useDocuments = () => {
   const uploadFile = async (
     file: File,
     subjectId: string,
-    visibility: DocumentVisibility,
-    classIds: string[],
     chapter: number,
     chapterTitle: string,
     onProgress?: (progress: number) => void
@@ -63,7 +61,7 @@ export const useDocuments = () => {
     setError(null);
     try {
       const doc = await docApi.uploadDocument(
-        { file, subjectId, visibility, classIds, chapter, chapterTitle },
+        { file, subjectId, chapter, chapterTitle },
         (progressEvent) => {
           if (onProgress && progressEvent.total) {
             const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);

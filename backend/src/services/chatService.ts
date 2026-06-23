@@ -27,6 +27,8 @@ const titleFromMessage = (message: string): string => {
   return compact.length > 50 ? `${compact.slice(0, 50)}...` : compact;
 };
 
+const MAX_STORED_CHAT_MESSAGES = 80;
+
 export class ChatService {
   constructor(
     private embeddingPort: IEmbeddingPort,
@@ -37,7 +39,7 @@ export class ChatService {
 
   /**
    * Creates a chat session scoped to a document.
-   * If the user is a student, verifies they are enrolled in the document's subject.
+   * Access is checked against the selected document and Subject-only permissions.
    */
   async createChatSession(
     title: string | undefined,
@@ -148,7 +150,7 @@ export class ChatService {
    * Orchestrates the full RAG pipeline with security enforcement:
    * 1. Verifies session ownership
    * 2. Resolves the selected document and its subject
-   * 3. Verifies student enrollment in the document's subject
+   * 3. Verifies Subject-only access to the selected document
    * 4. Restricts chunk retrieval to the selected document
    */
   async generateChatResponse(
@@ -179,11 +181,11 @@ export class ChatService {
       throw new AppError('Subject associated with this session no longer exists.', 404);
     }
 
-    // Quota check for students — teachers have unlimited questions
+    // Admin is unlimited; students and teachers use monthly account quota.
     let quotaStatus: QuotaStatus | undefined;
     let reservedQuotaPeriodKey: string | null = null;
-    if (userRole === 'student') {
-      quotaStatus = await this.subscriptionService.reserveQuota(userId);
+    if (userRole !== 'admin') {
+      quotaStatus = await this.subscriptionService.reserveQuota(userId, userRole);
       reservedQuotaPeriodKey = quotaStatus.periodKey;
     }
 
@@ -224,8 +226,8 @@ export class ChatService {
       });
       await this.saveAndCacheSession(session);
 
-      if (userRole === 'student') {
-        quotaStatus = await this.subscriptionService.checkQuota(userId);
+      if (userRole !== 'admin') {
+        quotaStatus = await this.subscriptionService.checkQuota(userId, userRole);
       }
 
       return { ...response, quotaStatus };
@@ -251,8 +253,8 @@ Question: ${userMessage}`;
       session.messages.push({ role: 'assistant', content, citations, createdAt: new Date() });
       await this.saveAndCacheSession(session);
 
-      if (userRole === 'student') {
-        quotaStatus = await this.subscriptionService.checkQuota(userId);
+      if (userRole !== 'admin') {
+        quotaStatus = await this.subscriptionService.checkQuota(userId, userRole);
       }
 
       return { content, citations, quotaStatus };
@@ -274,6 +276,11 @@ Question: ${userMessage}`;
   }
 
   private async saveAndCacheSession(session: any): Promise<void> {
+    const overflow = session.messages.length - MAX_STORED_CHAT_MESSAGES;
+    if (overflow > 0) {
+      session.messages.splice(0, overflow);
+      session.archivedMessagesCount = (session.archivedMessagesCount ?? 0) + overflow;
+    }
     await session.save();
     const cacheKey = `chat_session:${session._id.toString()}`;
     await this.cachePort.set(cacheKey, session.toObject(), 1800); // 30 minutes TTL

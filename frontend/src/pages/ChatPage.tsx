@@ -36,13 +36,11 @@ const ChatInner: React.FC = () => {
   const documents = appState.documents as IDocument[];
   const role = authState.user?.role;
 
-  const availableDocuments = documents.filter((doc) => role === 'teacher'
-    ? ['approved', 'pending'].includes(doc.status)
-    : doc.status === 'approved');
+  const availableDocuments = documents.filter((doc) => doc.status === 'ready');
   const sessionDocumentId = appState.sessions.find((session) => session._id === activeSessionId)?.documentId;
 
   const refreshQuota = useCallback(async () => {
-    if (role !== 'student') return;
+    if (role === 'admin' || !role) return;
 
     try {
       setQuotaLoading(true);
@@ -88,7 +86,7 @@ const ChatInner: React.FC = () => {
   }, [sessionDocumentId]);
 
   useEffect(() => {
-    if (role === 'student') {
+    if (role !== 'admin') {
       void refreshQuota();
     } else {
       setQuota(null);

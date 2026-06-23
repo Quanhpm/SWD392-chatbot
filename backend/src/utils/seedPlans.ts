@@ -18,7 +18,7 @@ const PLANS = [
     price: 50000,
     questionLimit: 300,
     durationDays: 30,
-    features: ['300 câu hỏi mỗi tháng', 'Truy cập tài liệu đầy đủ', 'AI Study Assist'],
+    features: ['300 câu hỏi mỗi tháng', 'Truy cập tài liệu đầy đủ', 'Hỏi đáp RAG theo tài liệu'],
     isActive: true,
     sortOrder: 1,
   },

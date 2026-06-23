@@ -8,9 +8,11 @@ Users can upload course materials (PDF chapters, DOCX notes, PPTX slides). The b
 - **Document Vault**: Manage and view all indexed materials (PDF, DOCX, PPTX).
 - **Intelligent RAG Pipeline**: Local cosine similarity ranking for free tier MongoDB compatibility.
 - **Academic Chat Interface**: Multi-session conversations with interactive source citations.
-- **Class-aware Privacy**: Documents can be shared subject-wide or restricted to selected classes.
-- **Monthly Account Quota**: Free/Plus/Pro include 50/300/1000 questions per user per UTC month.
-- **Email Notifications**: Gmail SMTP notifications for account creation, class assignment/enrollment, password reset, and document review decisions.
+- **Subject-only Access**: Students see every active subject; teachers manage documents in assigned subjects.
+- **Automatic Publishing**: Uploaded documents become visible after processing succeeds; no approval workflow.
+- **Monthly Account Quota**: students receive 50/300/1000 questions by plan, teachers receive 100, and admins are unlimited (UTC month).
+- **Email Notifications**: Gmail SMTP notifications for account creation, password reset, and teacher subject assignment/removal, backed by an email outbox with status and retry.
+- **Security Controls**: header-based JWT auth, login/upload/chat rate limits, file extension/MIME/signature validation, security headers, and document action audit logs.
 - **Test Set Suite**: Includes 50 evaluation Q&A pairs spanning different categories and difficulties.
 
 ## 2. Tech Stack
@@ -81,7 +83,12 @@ se1939-rag-chatbot/
 | `/api/chat/sessions/:id` | GET | Get session with messages |
 | `/api/chat/sessions/:id/messages` | POST | Send message to session |
 | `/api/chat/sessions/:id` | DELETE | Delete session |
-| `/api/test-set` | GET | Get 50 course evaluation questions |
+| `/api/subjects/:id/teachers` | GET/POST | List or assign subject teachers (admin) |
+| `/api/subjects/:id/teachers/:teacherId` | DELETE | Remove a subject teacher (admin) |
+| `/api/admin/email-notifications` | GET | View email outbox status (admin) |
+| `/api/admin/email-notifications/:id/retry` | POST | Retry a failed/queued email notification (admin) |
+| `/api/admin/audit-logs` | GET | View document audit logs (admin) |
+| `/api/test-set` | GET | Get RAG evaluation questions (admin) |
 | `/api/subscriptions/quota` | GET | Get current user's account-wide monthly quota |
 
 ## 7. Environment Variables

@@ -74,13 +74,19 @@ if (emailEnabled && (!smtpUser || !smtpPass)) {
   throw new Error('SMTP_USER and SMTP_PASS are required when EMAIL_ENABLED=true');
 }
 
+const jwtSecret = readString('JWT_SECRET', 'changeme-super-secret-jwt-key-min-32-chars-long');
+const nodeEnv = readString('NODE_ENV', 'development');
+if (nodeEnv === 'production' && jwtSecret === 'changeme-super-secret-jwt-key-min-32-chars-long') {
+  throw new Error('JWT_SECRET must be configured to a non-default value in production.');
+}
+
 export const env: Environment = {
   geminiApiKey: readString('GEMINI_API_KEY'),
   embeddingModel: readString('GEMINI_EMBEDDING_MODEL', 'gemini-embedding-001'),
   chatModel: readString('GEMINI_CHAT_MODEL', 'gemini-2.5-flash'),
   mongodbUri: readString('MONGODB_URI', 'mongodb://localhost:27017/se1939-rag-chatbot'),
   port: readNumber('PORT', 3001),
-  nodeEnv: readString('NODE_ENV', 'development'),
+  nodeEnv,
   frontendUrl: readString('FRONTEND_URL', 'http://localhost:5173'),
   chunkSize: readNumber('CHUNK_SIZE', 800),
   chunkOverlap: readNumber('CHUNK_OVERLAP', 200),
@@ -89,7 +95,7 @@ export const env: Environment = {
   maxFileSize: readNumber('MAX_FILE_SIZE', 52_428_800),
   uploadDir: readString('UPLOAD_DIR', './uploads'),
   // Auth
-  jwtSecret: readString('JWT_SECRET', 'changeme-super-secret-jwt-key-min-32-chars-long'),
+  jwtSecret,
   jwtExpiresIn: readString('JWT_EXPIRES_IN', '7d'),
   bcryptSaltRounds: readNumber('BCRYPT_SALT_ROUNDS', 10),
   redisUrl: process.env.REDIS_URL || undefined,

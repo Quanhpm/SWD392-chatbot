@@ -1,6 +1,5 @@
 export type FileType = 'pdf' | 'docx' | 'pptx';
-export type DocumentStatus = 'uploaded' | 'processing' | 'pending' | 'approved' | 'rejected' | 'failed';
-export type DocumentVisibility = 'subject-wide' | 'class-restricted';
+export type DocumentStatus = 'uploaded' | 'processing' | 'ready' | 'failed';
 export type UserRole = 'admin' | 'teacher' | 'student';
 
 export interface IUser {
@@ -25,27 +24,13 @@ export interface ISubject {
   createdAt: string;
 }
 
-export interface ICourseClass {
+export interface ISubjectAssignment {
   _id: string;
-  code: string;
-  name: string;
   subjectId: string | ISubject;
-  teacherId?: string | Pick<IUser, 'id' | '_id' | 'username' | 'fullName' | 'userCode'>;
-  status: 'draft' | 'active' | 'archived';
-  allowSelfEnrollment: boolean;
-  joinCode?: string;
-  enrolled?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface IClassEnrollment {
-  _id: string;
-  classId: string;
-  studentId: IUser;
-  source: 'admin' | 'self';
+  teacherId: string | IUser;
+  assignedBy: string | IUser;
   status: 'active' | 'removed';
-  joinedAt: string;
+  assignedAt: string;
   removedAt?: string;
 }
 
@@ -58,8 +43,6 @@ export interface IDocument {
   mimeType: string;
   subjectId?: string;
   subject: string;
-  visibility: DocumentVisibility;
-  classIds: Array<string | Pick<ICourseClass, '_id' | 'code' | 'name' | 'status'>>;
   chapter: number;
   chapterTitle: string;
   status: DocumentStatus;
@@ -70,9 +53,6 @@ export interface IDocument {
   uploadedAt: string;
   processedAt?: string;
   indexedAt?: string;
-  reviewedBy?: string;
-  reviewedAt?: string;
-  rejectionReason?: string;
 }
 
 export interface ICitation {
@@ -102,8 +82,52 @@ export interface IChatSession {
   documentId?: string;
   userId?: string;
   messages: IChatMessage[];
+  archivedMessagesCount?: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface IEmailNotification {
+  _id: string;
+  event: string;
+  recipientEmail: string;
+  recipientName: string;
+  subject: string;
+  status: 'queued' | 'sent' | 'failed';
+  attempts: number;
+  maxAttempts: number;
+  lastError?: string;
+  messageId?: string;
+  nextAttemptAt?: string;
+  sentAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IAuditLog {
+  _id: string;
+  actorId?: string | Pick<IUser, 'id' | '_id' | 'username' | 'fullName' | 'userCode' | 'role'>;
+  actorRole: UserRole;
+  action:
+    | 'user.create'
+    | 'user.update'
+    | 'user.password.reset'
+    | 'user.deactivate'
+    | 'user.activate'
+    | 'subject.create'
+    | 'subject.update'
+    | 'subject.archive'
+    | 'subject.assignment.add'
+    | 'subject.assignment.remove'
+    | 'document.upload'
+    | 'document.metadata.update'
+    | 'document.delete'
+    | 'subscription.subscribe'
+    | 'subscription.cancel';
+  entityType: 'user' | 'subject' | 'subjectAssignment' | 'document' | 'subscription';
+  entityId: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
 }
 
 export interface ChatResponse {

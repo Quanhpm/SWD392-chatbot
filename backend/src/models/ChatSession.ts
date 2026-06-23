@@ -25,6 +25,7 @@ export interface IChatSession {
   documentId: Types.ObjectId; // document this chat is scoped to
   userId: Types.ObjectId;     // owner of this chat session
   messages: IChatMessage[];
+  archivedMessagesCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -75,6 +76,7 @@ const chatSessionSchema = new Schema<IChatSession>(
       required: true,
     },
     messages: [chatMessageSchema],
+    archivedMessagesCount: { type: Number, default: 0, min: 0 },
   },
   {
     timestamps: true,
