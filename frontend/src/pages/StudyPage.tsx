@@ -218,6 +218,7 @@ const StudyPageInner: React.FC = () => {
     isLoading: isChatLoading,
     error: chatError,
     postMessage,
+    loadSessionDetails,
   } = useChatSession();
 
   // Core Study Page State
@@ -236,7 +237,6 @@ const StudyPageInner: React.FC = () => {
   const [viewMode, setViewMode] = useState<'reading' | 'assist'>('reading');
   const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
   const [editorContent, setEditorContent] = useState<string>('');
-  const [isEditing, setIsEditing] = useState<boolean>(false);
   const [hasPhysicalFile, setHasPhysicalFile] = useState<boolean>(false);
   const [showPdfPreview, setShowPdfPreview] = useState<boolean>(true);
   const [assistData, setAssistData] = useState<{
@@ -313,13 +313,17 @@ const StudyPageInner: React.FC = () => {
     setChunks([]);
     setViewMode('reading');
     setFlippedCards({});
-    setIsEditing(false);
     setHasPhysicalFile(false);
     setShowPdfPreview(false);
     setAssistData(null);
     setAssistError(null);
-    appDispatch({ type: 'SET_ACTIVE_SESSION', payload: null });
-    chatDispatch({ type: 'CLEAR_CHAT' });
+    const existingSession = appState.sessions.find((s) => s.documentId === doc._id);
+    if (existingSession) {
+      void loadSessionDetails(existingSession._id);
+    } else {
+      appDispatch({ type: 'SET_ACTIVE_SESSION', payload: null });
+      chatDispatch({ type: 'CLEAR_CHAT' });
+    }
     void refreshQuota();
     try {
       const data = await getDocumentChunks(doc._id);
@@ -344,7 +348,11 @@ const StudyPageInner: React.FC = () => {
           if (doc.fileType === 'docx') {
             try {
               await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js');
-              const fileResponse = await fetch(`/api/documents/${doc._id}/file?token=${token || ''}`);
+              const fileResponse = await fetch(`/api/documents/${doc._id}/file?token=${token || ''}`, {
+                headers: {
+                  'Authorization': `Bearer ${token || ''}`
+                }
+              });
               const arrayBuffer = await fileResponse.arrayBuffer();
               const result = await (window as any).mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
               const docxHTML = `
@@ -383,6 +391,15 @@ const StudyPageInner: React.FC = () => {
       setIsLoadingChunks(false);
     }
   };
+
+  useEffect(() => {
+    if (selectedDoc && !appState.activeSessionId && appState.sessions.length > 0) {
+      const existingSession = appState.sessions.find((s) => s.documentId === selectedDoc._id);
+      if (existingSession) {
+        void loadSessionDetails(existingSession._id);
+      }
+    }
+  }, [appState.sessions, selectedDoc, appState.activeSessionId, loadSessionDetails]);
 
   const handleGenerateAssist = async () => {
     if (!selectedDoc) return;
@@ -462,7 +479,7 @@ const StudyPageInner: React.FC = () => {
   }, [isResizing, resize, stopResize]);
 
   return (
-    <div className="study-workspace">
+    <div className={`study-workspace ${isResizing ? 'resizing' : ''}`}>
       {/* ── 1. LEFT SIDEBAR: Table of Contents / Document List ── */}
       <aside className={`study-left-pane ${leftSidebarOpen ? 'open' : 'collapsed'}`}>
         <div className="pane-header flex-center">
@@ -541,7 +558,7 @@ const StudyPageInner: React.FC = () => {
       <main className="study-center-pane">
         {selectedDoc ? (
           <div className="document-reader">
-            {/* Header with Dual Mode Tabs */}
+            {/* Header */}
             <div className="reader-header">
               <div className="reader-doc-details">
                 <span className="badge badge-success">Chương {selectedDoc.chapter}</span>
@@ -550,27 +567,9 @@ const StudyPageInner: React.FC = () => {
                   Nguồn: <strong>{selectedDoc.originalName}</strong> • {selectedDoc.totalChunks} đoạn kiến thức
                 </p>
               </div>
-              <div className="reader-header-tabs flex-center">
-                <button
-                  className={`tab-btn ${viewMode === 'reading' ? 'active' : ''}`}
-                  onClick={() => setViewMode('reading')}
-                  title="Chế độ đọc liên tục"
-                >
-                  <span className="material-symbols-outlined">menu_book</span>
-                  Đọc tài liệu
-                </button>
-                <button
-                  className={`tab-btn ${viewMode === 'assist' ? 'active' : ''}`}
-                  onClick={() => setViewMode('assist')}
-                  title="AI Hỗ trợ học tập trực quan"
-                >
-                  <span className="material-symbols-outlined">psychology_alt</span>
-                  AI Study Assist
-                </button>
-              </div>
             </div>
 
-            <div className="reader-body" style={{ padding: viewMode === 'reading' ? '0' : '32px' }}>
+            <div className="reader-body" style={{ padding: '0' }}>
               {isLoadingChunks ? (
                 <div className="flex-center" style={{ height: '200px' }}>
                   <span className="spinner" />
@@ -581,62 +580,14 @@ const StudyPageInner: React.FC = () => {
                   <p style={{ color: 'var(--color-outline)' }}>Không thể tải văn bản. Tài liệu có thể rỗng.</p>
                 </div>
               ) : viewMode === 'reading' ? (
-                /* ── Mode 1: Google Docs / CKEditor Clone Workspace ── */
+                /* ── Mode 1: Google Docs Workspace (Read Only) ── */
                 <div className="google-docs-editor-container">
-                  {/* WYSIWYG Editor Toolbar */}
+                  {/* Document Viewer Toolbar */}
                   <div className="editor-toolbar glass">
-                    <div className="toolbar-group">
-                      <select 
-                        className="toolbar-select" 
-                        defaultValue="normal" 
-                        title="Định dạng đoạn văn"
-                        disabled={!isEditing}
-                      >
-                        <option value="h1">Tiêu đề 1</option>
-                        <option value="h2">Tiêu đề 2</option>
-                        <option value="normal">Văn bản thường</option>
-                      </select>
-                      <select 
-                        className="toolbar-select font-size-select" 
-                        defaultValue="16" 
-                        title="Kích thước chữ"
-                        disabled={!isEditing}
-                      >
-                        <option value="14">14px</option>
-                        <option value="16">16px</option>
-                        <option value="18">18px</option>
-                        <option value="20">20px</option>
-                      </select>
+                    <div className="toolbar-group" style={{ paddingLeft: 8 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--color-primary)' }}>info</span>
+                      <span style={{ font: 'var(--text-label-sm)', fontWeight: 600, color: 'var(--color-outline)' }}>Chế độ xem tài liệu gốc</span>
                     </div>
-
-                    <div className="toolbar-divider" />
-
-                    <div className="toolbar-group">
-                      <button className="toolbar-btn bold-btn active" title="In đậm (Ctrl+B)">B</button>
-                      <button className="toolbar-btn italic-btn" title="In nghiêng (Ctrl+I)">I</button>
-                      <button className="toolbar-btn underline-btn" title="Gạch chân (Ctrl+U)">U</button>
-                      <button className="toolbar-btn color-btn" title="Màu chữ">
-                        <span className="material-symbols-outlined">format_color_text</span>
-                      </button>
-                    </div>
-
-                    <div className="toolbar-divider" />
-
-                    <div className="toolbar-group">
-                      <button className="toolbar-btn" title="Căn lề trái"><span className="material-symbols-outlined">format_align_left</span></button>
-                      <button className="toolbar-btn" title="Căn giữa"><span className="material-symbols-outlined">format_align_center</span></button>
-                      <button className="toolbar-btn" title="Căn lề phải"><span className="material-symbols-outlined">format_align_right</span></button>
-                      <button className="toolbar-btn" title="Căn đều"><span className="material-symbols-outlined">format_align_justify</span></button>
-                    </div>
-
-                    <div className="toolbar-divider" />
-
-                    <div className="toolbar-group">
-                      <button className="toolbar-btn" title="Danh sách ký hiệu"><span className="material-symbols-outlined">format_list_bulleted</span></button>
-                      <button className="toolbar-btn" title="Danh sách số"><span className="material-symbols-outlined">format_list_numbered</span></button>
-                    </div>
-
-                    <div className="toolbar-divider" />
 
                     <div className="toolbar-group" style={{ marginLeft: 'auto', gap: 8 }}>
                       {hasPhysicalFile && (
@@ -656,31 +607,15 @@ const StudyPageInner: React.FC = () => {
                           className={`editor-mode-toggle btn-ghost ${showPdfPreview ? 'pdf-active' : ''}`}
                           onClick={() => {
                             setShowPdfPreview(!showPdfPreview);
-                            setIsEditing(false);
                           }}
-                          title={showPdfPreview ? 'Chuyển sang định dạng văn bản để chỉnh sửa' : 'Chuyển sang xem PDF gốc'}
+                          title={showPdfPreview ? 'Chuyển sang định dạng văn bản' : 'Chuyển sang xem PDF gốc'}
                         >
                           <span className="material-symbols-outlined">
-                            {showPdfPreview ? 'edit_note' : 'picture_as_pdf'}
+                            {showPdfPreview ? 'article' : 'picture_as_pdf'}
                           </span>
-                          {showPdfPreview ? 'Soạn thảo' : 'Xem PDF'}
+                          {showPdfPreview ? 'Đọc văn bản' : 'Xem PDF'}
                         </button>
                       )}
-                      <button 
-                        className={`editor-mode-toggle btn-ghost ${isEditing ? 'editing' : ''}`}
-                        onClick={() => {
-                          setIsEditing(!isEditing);
-                          if (!isEditing) {
-                            setShowPdfPreview(false);
-                          }
-                        }}
-                        title={isEditing ? 'Chuyển sang chế độ đọc' : 'Chuyển sang chế độ chỉnh sửa'}
-                      >
-                        <span className="material-symbols-outlined">
-                          {isEditing ? 'menu_book' : 'edit'}
-                        </span>
-                        {isEditing ? 'Đọc Sách' : 'Chỉnh sửa'}
-                      </button>
                       <button 
                         className="toolbar-btn print-btn" 
                         onClick={() => window.print()} 
@@ -691,27 +626,7 @@ const StudyPageInner: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Office Document Banner (for docx/pptx files) */}
-                  {hasPhysicalFile && selectedDoc.fileType !== 'pdf' && (
-                    <div className="office-doc-banner glass">
-                      <span className="material-symbols-outlined banner-icon">info</span>
-                      <div className="banner-content">
-                        <p className="banner-text" style={{ margin: 0 }}>
-                          <strong>Tài liệu Word gốc ({selectedDoc.fileType.toUpperCase()})</strong> đã được trích xuất dữ liệu thành công. Bạn có thể chỉnh sửa trực tiếp bên dưới hoặc tải xuống tệp gốc nguyên bản.
-                        </p>
-                      </div>
-                      <a 
-                        href={`/api/documents/${selectedDoc._id}/file?token=${localStorage.getItem('auth_token') || ''}`}
-                        download={selectedDoc.originalName}
-                        className="banner-download-btn flex-center"
-                        title="Tải xuống tệp tài liệu gốc"
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
-                        Tải tệp gốc
-                      </a>
-                    </div>
-                  )}
+
 
                   {/* Margin Ruler */}
                   {!showPdfPreview && (
@@ -742,10 +657,7 @@ const StudyPageInner: React.FC = () => {
                   ) : (
                     <div className="editor-paper-container">
                       <div 
-                        className={`editor-paper glass ${isEditing ? 'content-editable' : ''}`}
-                        contentEditable={isEditing}
-                        suppressContentEditableWarning
-                        onBlur={(e) => setEditorContent(e.currentTarget.innerHTML)}
+                        className="editor-paper glass read-only"
                         dangerouslySetInnerHTML={{ __html: editorContent }}
                       />
                     </div>
@@ -953,6 +865,17 @@ const StudyPageInner: React.FC = () => {
           background: var(--color-background);
           overflow: hidden;
           position: relative;
+        }
+        .study-workspace.resizing {
+          user-select: none !important;
+          cursor: col-resize !important;
+        }
+        .study-workspace.resizing iframe,
+        .study-workspace.resizing .pdf-viewer-container {
+          pointer-events: none !important;
+        }
+        .study-workspace.resizing * {
+          cursor: col-resize !important;
         }
 
         /* ── Left Sidebar ── */
