@@ -14,7 +14,7 @@ export const Sidebar: React.FC = () => {
     ? [{ to: '/admin', icon: 'admin_panel_settings', label: 'Admin Workspace' }, { to: '/chat', icon: 'forum', label: 'Kiểm thử Chat AI' }]
     : role === 'teacher'
       ? [{ to: '/dashboard', icon: 'dashboard', label: 'Môn được phân công' }, { to: '/documents', icon: 'folder_open', label: 'Tài liệu' }, { to: '/chat', icon: 'forum', label: 'Chat AI' }]
-      : [{ to: '/portal', icon: 'school', label: 'Tất cả môn học' }, { to: '/documents', icon: 'library_books', label: 'Tài liệu' }, { to: '/chat', icon: 'forum', label: 'Chat AI' }, { to: '/pricing', icon: 'diamond', label: 'Gói câu hỏi' }];
+      : [{ to: '/portal', icon: 'school', label: 'Tất cả môn học' }, { to: '/chat', icon: 'forum', label: 'Chat AI' }, { to: '/pricing', icon: 'diamond', label: 'Gói câu hỏi' }];
 
   return <aside className={`app-sidebar-wrap ${appState.sidebarOpen ? 'open' : ''}`}><div className="role-sidebar"><div className="sidebar-profile"><div className="sidebar-avatar">{authState.user?.fullName?.charAt(0) || authState.user?.username.charAt(0)}</div><div><strong>{authState.user?.fullName || authState.user?.username}</strong><span>{roleLabel[role]}</span></div></div>
     <nav>{links.map((link) => <NavLink key={link.to} to={link.to} className={({ isActive }) => isActive ? 'active' : ''}><span className="material-symbols-outlined">{link.icon}</span>{link.label}</NavLink>)}</nav>

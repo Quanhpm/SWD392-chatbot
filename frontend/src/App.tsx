@@ -65,7 +65,7 @@ const AuthenticatedApp: React.FC = () => {
             <Route path="/chat" element={<ChatPage />} />
             <Route path="/chat/:sessionId" element={<ChatPage />} />
             <Route path="/study/:subjectId" element={<StudyPage />} />
-            <Route path="/documents" element={role === 'admin' ? <Navigate to="/admin" replace /> : <DocumentsPage />} />
+            <Route path="/documents" element={role === 'teacher' ? <DocumentsPage /> : <Navigate to="/" replace />} />
             <Route path="/pricing" element={role === 'student' ? <PricingPage /> : <Navigate to="/" replace />} />
 
             {/* Catch-all */}
