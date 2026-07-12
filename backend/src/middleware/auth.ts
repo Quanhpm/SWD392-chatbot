@@ -24,11 +24,7 @@ export const requireAuth = async (
     let token: string | undefined;
     const authHeader = req.headers.authorization;
 
-    if (authHeader?.startsWith('Bearer ')) {
-      token = authHeader.slice(7);
-    } else if (typeof req.query.token === 'string') {
-      token = req.query.token;
-    }
+    if (authHeader?.startsWith('Bearer ')) token = authHeader.slice(7);
 
     if (!token) {
       res.status(401).json({ success: false, error: 'Access denied. No token provided.' });

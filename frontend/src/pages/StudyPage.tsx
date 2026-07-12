@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext.js';
 import { useAuth } from '../context/AuthContext.js';
 import { ChatProvider, useChat } from '../context/ChatContext.js';
@@ -73,7 +73,7 @@ const studyAssistData: Record<number, {
   }
 };
 
-const generateRichHTML = (chapter: number, chapterTitle: string, chunks: IChunk[]): string => {
+const generateLegacyRichHTML = (chapter: number, chapterTitle: string, chunks: IChunk[]): string => {
   // Check if it is a seeded high-fidelity course chapter (1 to 5)
   if ([1, 2, 3, 4, 5].includes(chapter)) {
     const contentHtml = chunks.map((chunk, idx) => {
@@ -153,7 +153,7 @@ const generateRichHTML = (chapter: number, chapterTitle: string, chunks: IChunk[
 
     // Default fallback (seeded data chunks)
     return `<h2>Đoạn kiến thức #${chunk.chunkIndex + 1}</h2>
-<p>${chunk.content}</p>`;
+<p>${escapeHtml(chunk.content)}</p>`;
   }).join('\n');
 
   return `
@@ -174,14 +174,14 @@ const generateRichHTML = (chapter: number, chapterTitle: string, chunks: IChunk[
       return chunk.content
         .split('\n')
         .filter((p) => p.trim() !== '')
-        .map((p) => `<p style="margin-bottom: 16px; text-indent: 24px; text-align: justify; line-height: 1.8;">${p}</p>`)
+        .map((p) => `<p style="margin-bottom: 16px; text-indent: 24px; text-align: justify; line-height: 1.8;">${escapeHtml(p)}</p>`)
         .join('\n');
     })
     .join('\n');
 
   return `
     <div class="editor-title-container">
-      <h1 class="editor-doc-h1">${chapterTitle}</h1>
+      <h1 class="editor-doc-h1">${escapeHtml(chapterTitle)}</h1>
       <p class="editor-doc-meta">Tài liệu môn học • Trích xuất tự động</p>
       <hr class="editor-doc-divider" />
     </div>
@@ -205,9 +205,64 @@ const loadScript = (src: string): Promise<void> => {
   });
 };
 
+const escapeHtml = (value: string): string => value.replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[character] ?? character));
+
+const sanitizeRichHtml = (html: string): string => {
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  const allowedTags = new Set(['A', 'B', 'BLOCKQUOTE', 'BR', 'CODE', 'EM', 'H1', 'H2', 'H3', 'H4', 'HR', 'I', 'LI', 'OL', 'P', 'PRE', 'STRONG', 'TABLE', 'TBODY', 'TD', 'TH', 'THEAD', 'TR', 'UL']);
+  const allowedAttributes: Record<string, Set<string>> = {
+    A: new Set(['href', 'title', 'target', 'rel']),
+    TD: new Set(['colspan', 'rowspan']),
+    TH: new Set(['colspan', 'rowspan']),
+  };
+  const blockedTags = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'FORM', 'INPUT', 'META', 'LINK']);
+  const walk = (element: Element): void => {
+    for (const child of Array.from(element.children)) {
+      if (blockedTags.has(child.tagName)) {
+        child.remove();
+        continue;
+      }
+      if (!allowedTags.has(child.tagName)) {
+        child.replaceWith(...Array.from(child.childNodes));
+        continue;
+      }
+      for (const attribute of Array.from(child.attributes)) {
+        const allowed = allowedAttributes[child.tagName]?.has(attribute.name) ?? false;
+        if (!allowed || attribute.name.toLowerCase().startsWith('on')) child.removeAttribute(attribute.name);
+      }
+      if (child.tagName === 'A') {
+        const href = child.getAttribute('href') ?? '';
+        if (!/^(https?:|mailto:|#)/i.test(href)) child.removeAttribute('href');
+        child.setAttribute('rel', 'noopener noreferrer');
+        child.setAttribute('target', '_blank');
+      }
+      walk(child);
+    }
+  };
+  walk(document.body);
+  return document.body.innerHTML;
+};
+
+const generateRichHTML = (chapter: number, chapterTitle: string, chunks: IChunk[]): string => {
+  const contentHtml = chunks.map((chunk) => chunk.content
+    .split('\n')
+    .filter((paragraph) => paragraph.trim() !== '')
+    .map((paragraph) => `<p style="margin-bottom: 16px; text-indent: 24px; text-align: justify; line-height: 1.8;">${escapeHtml(paragraph)}</p>`)
+    .join('\n')).join('\n');
+  return `<div class="editor-title-container"><h1 class="editor-doc-h1">Chương ${chapter}: ${escapeHtml(chapterTitle)}</h1><p class="editor-doc-meta">Tài liệu môn học • Trích xuất tự động</p><hr class="editor-doc-divider" /></div><div class="editor-doc-content-body">${contentHtml}</div>`;
+};
+
 const StudyPageInner: React.FC = () => {
   const { subjectId } = useParams<{ subjectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const requestedDocumentId = (location.state as { documentId?: string } | null)?.documentId;
 
   const { state: appState, dispatch: appDispatch } = useApp();
   const { state: authState } = useAuth();
@@ -238,6 +293,7 @@ const StudyPageInner: React.FC = () => {
   const [flippedCards, setFlippedCards] = useState<Record<number, boolean>>({});
   const [editorContent, setEditorContent] = useState<string>('');
   const [hasPhysicalFile, setHasPhysicalFile] = useState<boolean>(false);
+  const [fileObjectUrl, setFileObjectUrl] = useState<string | null>(null);
   const [showPdfPreview, setShowPdfPreview] = useState<boolean>(true);
   const [assistData, setAssistData] = useState<{
     takeaways: { concept: string; desc: string; icon: string; color: string }[];
@@ -254,6 +310,11 @@ const StudyPageInner: React.FC = () => {
 
   const dividerRef = useRef<HTMLDivElement>(null);
   const chatPaneRef = useRef<HTMLDivElement>(null);
+  const documentLoadRef = useRef(0);
+
+  useEffect(() => () => {
+    if (fileObjectUrl) URL.revokeObjectURL(fileObjectUrl);
+  }, [fileObjectUrl]);
 
   const refreshQuota = useCallback(async () => {
     if (authState.user?.role !== 'student') return;
@@ -295,7 +356,8 @@ const StudyPageInner: React.FC = () => {
         setDocuments(visibleDocs.sort((a, b) => a.chapter - b.chapter));
         // Auto-select first document if available
         if (visibleDocs.length > 0) {
-          void selectDocument(visibleDocs[0] as IDocument);
+          const requestedDocument = visibleDocs.find((document) => document._id === requestedDocumentId);
+          void selectDocument((requestedDocument ?? visibleDocs[0]) as IDocument);
         }
       } catch (err) {
         console.error('Failed to load course documents:', err);
@@ -305,15 +367,17 @@ const StudyPageInner: React.FC = () => {
     };
 
     void loadDocs();
-  }, [subjectId, appState.subjects]);
+  }, [subjectId, appState.subjects, requestedDocumentId]);
 
   const selectDocument = async (doc: IDocument) => {
+    const loadId = ++documentLoadRef.current;
     setSelectedDoc(doc);
     setIsLoadingChunks(true);
     setChunks([]);
     setViewMode('reading');
     setFlippedCards({});
     setHasPhysicalFile(false);
+    setFileObjectUrl(null);
     setShowPdfPreview(false);
     setAssistData(null);
     setAssistError(null);
@@ -327,6 +391,7 @@ const StudyPageInner: React.FC = () => {
     void refreshQuota();
     try {
       const data = await getDocumentChunks(doc._id);
+      if (loadId !== documentLoadRef.current) return;
       setChunks(data);
       const richHTML = generateRichHTML(doc.chapter, doc.chapterTitle, data);
       setEditorContent(richHTML);
@@ -341,6 +406,13 @@ const StudyPageInner: React.FC = () => {
       });
       if (response.ok) {
         setHasPhysicalFile(true);
+        const fileResponse = await fetch(`/api/documents/${doc._id}/file`, {
+          headers: { 'Authorization': `Bearer ${token || ''}` },
+        });
+        if (!fileResponse.ok) throw new Error('Could not load the physical document.');
+        if (loadId !== documentLoadRef.current) return;
+        const fileBlob = await fileResponse.blob();
+        setFileObjectUrl(URL.createObjectURL(fileBlob));
         if (doc.fileType === 'pdf') {
           setShowPdfPreview(true);
         } else {
@@ -348,21 +420,16 @@ const StudyPageInner: React.FC = () => {
           if (doc.fileType === 'docx') {
             try {
               await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js');
-              const fileResponse = await fetch(`/api/documents/${doc._id}/file?token=${token || ''}`, {
-                headers: {
-                  'Authorization': `Bearer ${token || ''}`
-                }
-              });
-              const arrayBuffer = await fileResponse.arrayBuffer();
+              const arrayBuffer = await fileBlob.arrayBuffer();
               const result = await (window as any).mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
               const docxHTML = `
                 <div class="editor-title-container">
-                  <h1 class="editor-doc-h1">${doc.chapterTitle}</h1>
+                  <h1 class="editor-doc-h1">${escapeHtml(doc.chapterTitle)}</h1>
                   <p class="editor-doc-meta">Tài liệu Word gốc (.docx) • Được kết xuất nguyên bản</p>
                   <hr class="editor-doc-divider" />
                 </div>
                 <div class="editor-doc-content-body docx-rendered-content">
-                  ${result.value}
+                  ${sanitizeRichHtml(result.value)}
                 </div>
               `;
               setEditorContent(docxHTML);
@@ -373,22 +440,10 @@ const StudyPageInner: React.FC = () => {
         }
       }
 
-      // Try fetching cached DocumentAssist data
-      const assistResponse = await fetch(`/api/documents/${doc._id}/assist`, {
-        headers: {
-          'Authorization': `Bearer ${token || ''}`
-        }
-      });
-      if (assistResponse.ok) {
-        const assistJson = await assistResponse.json();
-        if (assistJson.success && assistJson.cached && assistJson.data) {
-          setAssistData(assistJson.data);
-        }
-      }
     } catch (err) {
       console.error('Failed to load document text chunks:', err);
     } finally {
-      setIsLoadingChunks(false);
+      if (loadId === documentLoadRef.current) setIsLoadingChunks(false);
     }
   };
 
@@ -405,27 +460,29 @@ const StudyPageInner: React.FC = () => {
     if (!selectedDoc) return;
     setIsGeneratingAssist(true);
     setAssistError(null);
-    try {
-      const token = localStorage.getItem('auth_token');
-      const response = await fetch(`/api/documents/${selectedDoc._id}/assist/generate`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token || ''}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      const resJson = await response.json();
-      if (response.ok && resJson.success && resJson.data) {
-        setAssistData(resJson.data);
-      } else {
-        setAssistError(resJson.error || 'Không thể tạo bản tóm tắt học tập. Vui lòng thử lại sau.');
-      }
-    } catch (err) {
-      console.error('Failed to generate AI study guides:', err);
-      setAssistError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại mạng.');
-    } finally {
-      setIsGeneratingAssist(false);
-    }
+    const source = chunks.slice(0, 3).map((chunk, index) => ({
+      concept: `Đoạn kiến thức ${index + 1}`,
+      desc: chunk.content.replace(/\s+/g, ' ').trim().slice(0, 240),
+      icon: 'menu_book',
+      color: 'var(--color-primary)',
+    }));
+    setAssistData({
+      takeaways: source,
+      flashcards: chunks.slice(0, 3).map((chunk) => ({
+        question: 'Điểm chính của đoạn tài liệu này là gì?',
+        answer: chunk.content.replace(/\s+/g, ' ').trim().slice(0, 500),
+      })),
+    });
+    setViewMode('assist');
+    setIsGeneratingAssist(false);
+  };
+
+  const handleDownloadFile = () => {
+    if (!fileObjectUrl || !selectedDoc) return;
+    const link = document.createElement('a');
+    link.href = fileObjectUrl;
+    link.download = selectedDoc.originalName;
+    link.click();
   };
 
   // Chat message send handler
@@ -591,16 +648,17 @@ const StudyPageInner: React.FC = () => {
 
                     <div className="toolbar-group" style={{ marginLeft: 'auto', gap: 8 }}>
                       {hasPhysicalFile && (
-                        <a 
-                          href={`/api/documents/${selectedDoc._id}/file?token=${localStorage.getItem('auth_token') || ''}`}
-                          download={selectedDoc.originalName}
+                        <button
+                          type="button"
+                          onClick={handleDownloadFile}
+                          disabled={!fileObjectUrl}
                           className="editor-mode-toggle btn-ghost"
                           title="Tải xuống tệp tài liệu gốc"
                           style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}
                         >
                           <span className="material-symbols-outlined" style={{ fontSize: 18 }}>download</span>
                           Tải tệp gốc
-                        </a>
+                        </button>
                       )}
                       {hasPhysicalFile && selectedDoc.fileType === 'pdf' && (
                         <button 
@@ -649,7 +707,7 @@ const StudyPageInner: React.FC = () => {
                   {showPdfPreview ? (
                     <div className="pdf-viewer-container">
                       <iframe
-                        src={`/api/documents/${selectedDoc._id}/file?token=${localStorage.getItem('auth_token') || ''}`}
+                        src={fileObjectUrl ?? undefined}
                         className="pdf-iframe"
                         title={selectedDoc.originalName}
                       />

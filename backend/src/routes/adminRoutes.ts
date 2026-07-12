@@ -197,7 +197,15 @@ adminRoutes.post(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const notification = await emailService.retryNotification(req.params.id as string);
-      res.json({ success: true, notification });
+      await recordAuditLog({
+        actor: { id: req.user!.id, role: req.user!.role },
+        action: 'email.retry',
+        entityType: 'emailNotification',
+        entityId: req.params.id as string,
+        metadata: { status: notification.status, attempts: notification.attempts },
+      });
+      const { text: _text, html: _html, ...safeNotification } = notification;
+      res.json({ success: true, notification: safeNotification });
     } catch (error) {
       next(error);
     }

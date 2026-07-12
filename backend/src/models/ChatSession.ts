@@ -1,6 +1,7 @@
 import { Schema, model, type HydratedDocument, type Types } from 'mongoose';
 
 export interface ICitation {
+  subjectId?: Types.ObjectId;
   documentId: Types.ObjectId;
   fileName: string;
   subject: string;
@@ -34,6 +35,7 @@ export type ChatSessionDocument = HydratedDocument<IChatSession>;
 
 const citationSchema = new Schema<ICitation>(
   {
+    subjectId: { type: Schema.Types.ObjectId, ref: 'Subject' },
     documentId: { type: Schema.Types.ObjectId, ref: 'Document', required: true },
     fileName: { type: String, required: true },
     subject: { type: String, required: true },

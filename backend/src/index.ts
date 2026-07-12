@@ -24,6 +24,7 @@ import { migrateSubjectOnly } from './utils/migrateSubjectOnly.js';
 import { SubjectAssignmentModel } from './models/SubjectAssignment.js';
 
 const app = express();
+app.disable('x-powered-by');
 
 app.use(securityHeaders);
 app.use(

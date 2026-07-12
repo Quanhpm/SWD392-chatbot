@@ -41,6 +41,7 @@ export interface RetrievalResult {
 export interface ChatResponse {
   content: string;
   citations: Array<{
+    subjectId?: Types.ObjectId;
     documentId: Types.ObjectId;
     fileName: string;
     subject: string;

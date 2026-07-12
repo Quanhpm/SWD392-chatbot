@@ -13,15 +13,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.role === 'user';
 
   // Pre-process assistant text to format inline citation bracket [1] into standard markdown link [[1]](#citation-1)
+  const citationAnchor = `citation-${message._id ?? message.createdAt}`;
   const preprocessContent = (text: string) => {
-    return text.replace(/\[(\d+)\]/g, '[[$1]](#citation-$1)');
+    return text.replace(/\[(\d+)\]/g, `[[\$1]](#${citationAnchor}-\$1)`);
   };
 
   // Custom components for react-markdown
   const markdownComponents = {
     a: ({ href, children }: any) => {
       if (href && href.startsWith('#citation-')) {
-        const citationNumber = href.replace('#citation-', '');
+        const citationNumber = href.slice(href.lastIndexOf('-') + 1);
         return (
           <a
             href={href}
@@ -100,7 +101,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
 
         {/* Citation row */}
         {message.citations && message.citations.length > 0 && (
-          <ChatCitation citations={message.citations} />
+          <ChatCitation citations={message.citations} anchorPrefix={citationAnchor} />
         )}
       </div>
 

@@ -22,7 +22,12 @@ export const errorHandler = (
 ): void => {
   logger.error(`[${req.method} ${req.path}] ${err.message}`, err.stack);
 
-  const statusCode = err instanceof AppError ? err.statusCode : 500;
+  const multerCode = (err as Error & { code?: string }).code;
+  const statusCode = err instanceof AppError
+    ? err.statusCode
+    : multerCode === 'LIMIT_FILE_SIZE' ? 413
+      : multerCode === 'LIMIT_UNEXPECTED_FILE' ? 400
+        : 500;
   const message = env.nodeEnv === 'production' && statusCode === 500 ? 'Internal server error' : err.message;
 
   res.status(statusCode).json({ success: false, error: message });

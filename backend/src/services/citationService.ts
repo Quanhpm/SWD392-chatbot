@@ -1,3 +1,4 @@
+import { Types } from 'mongoose';
 import type { ICitation } from '../models/ChatSession.js';
 import type { RetrievalResult } from '../types/index.js';
 
@@ -7,9 +8,10 @@ const preview = (content: string): string => {
 };
 
 /** Builds structured citations from retrieved chunks. */
-export const buildCitations = (retrievalResults: RetrievalResult[]): ICitation[] =>
+export const buildCitations = (retrievalResults: RetrievalResult[], subjectId: string | Types.ObjectId): ICitation[] =>
   retrievalResults
     .map((result) => ({
+      subjectId: new Types.ObjectId(subjectId),
       documentId: result.chunk.documentId,
       fileName: result.chunk.metadata.fileName,
       subject: result.chunk.metadata.subject,
@@ -19,8 +21,4 @@ export const buildCitations = (retrievalResults: RetrievalResult[]): ICitation[]
       chunkIndex: result.chunk.chunkIndex,
       similarityScore: Number(result.similarityScore.toFixed(4)),
       snippetPreview: preview(result.chunk.content),
-    }))
-    .sort((first, second) => {
-      const documentCompare = first.fileName.localeCompare(second.fileName);
-      return documentCompare === 0 ? first.chunkIndex - second.chunkIndex : documentCompare;
-    });
+    }));

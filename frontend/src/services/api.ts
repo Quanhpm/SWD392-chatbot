@@ -24,16 +24,17 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (axios.isAxiosError(error)) {
-      // Redirect to login on 401 (expired/invalid token)
-      if (error.response?.status === 401) {
+      const errorData = error.response?.data as { error?: string; message?: string } | undefined;
+      const accountDeactivated = error.response?.status === 403
+        && errorData?.error === 'This account has been deactivated.';
+      // Clear stale client state for invalid/expired tokens and deactivated accounts.
+      if (error.response?.status === 401 || accountDeactivated) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
-        // Use a custom event to notify AuthContext
         window.dispatchEvent(new CustomEvent('auth:unauthorized'));
       }
       if (error.response?.data) {
-        const data = error.response.data as { error?: string; message?: string };
-        const message = data.error || data.message || error.message;
+        const message = errorData?.error || errorData?.message || error.message;
         return Promise.reject(new Error(message));
       }
     }

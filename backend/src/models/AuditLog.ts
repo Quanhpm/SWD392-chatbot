@@ -11,13 +11,14 @@ export type AuditAction =
   | 'subject.archive'
   | 'subject.assignment.add'
   | 'subject.assignment.remove'
+  | 'email.retry'
   | 'document.upload'
   | 'document.metadata.update'
   | 'document.delete'
   | 'subscription.subscribe'
   | 'subscription.cancel';
 
-export type AuditEntityType = 'user' | 'subject' | 'subjectAssignment' | 'document' | 'subscription';
+export type AuditEntityType = 'user' | 'subject' | 'subjectAssignment' | 'document' | 'subscription' | 'emailNotification';
 
 export interface IAuditLog {
   actorId: Types.ObjectId;
@@ -36,7 +37,7 @@ const auditLogSchema = new Schema<IAuditLog>(
     actorId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     actorRole: { type: String, enum: ['admin', 'teacher', 'student'], required: true },
     action: { type: String, required: true, index: true },
-    entityType: { type: String, enum: ['user', 'subject', 'subjectAssignment', 'document', 'subscription'], required: true },
+    entityType: { type: String, enum: ['user', 'subject', 'subjectAssignment', 'document', 'subscription', 'emailNotification'], required: true },
     entityId: { type: Schema.Types.ObjectId, required: true, index: true },
     metadata: { type: Schema.Types.Mixed, default: {} },
     createdAt: { type: Date, default: Date.now, index: true },

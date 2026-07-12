@@ -1,5 +1,6 @@
 import { SubjectModel, type ISubject } from '../models/Subject.js';
 import { DocumentModel } from '../models/Document.js';
+import { ChunkModel } from '../models/Chunk.js';
 import { SubjectAssignmentModel } from '../models/SubjectAssignment.js';
 import { UserModel } from '../models/User.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -54,6 +55,7 @@ export const updateSubject = async (
 ): Promise<ISubject> => {
   const subject = await SubjectModel.findById(id).exec();
   if (!subject) throw new AppError('Subject not found.', 404);
+  const previousName = subject.name;
   const code = input.code?.trim().toUpperCase();
   const name = input.name?.trim();
   if (code && await SubjectModel.exists({ code, _id: { $ne: id } })) throw new AppError('Subject code already exists.', 409);
@@ -63,6 +65,19 @@ export const updateSubject = async (
   if (input.description !== undefined) subject.description = input.description.trim();
   if (input.isActive !== undefined) subject.isActive = input.isActive;
   await subject.save();
+  if (subject.name !== previousName) {
+    const documents = await DocumentModel.find({ subjectId: subject._id }).select('_id').lean().exec();
+    await DocumentModel.updateMany(
+      { subjectId: subject._id },
+      { $set: { subject: subject.name } },
+    ).exec();
+    if (documents.length > 0) {
+      await ChunkModel.updateMany(
+        { documentId: { $in: documents.map((document) => document._id) } },
+        { $set: { 'metadata.subject': subject.name } },
+      ).exec();
+    }
+  }
   if (!subject.isActive) {
     await removeAllAssignments(subject, emailService);
   }
@@ -100,6 +115,9 @@ export const assignTeacher = async (
   ]);
   if (!subject) throw new AppError('Active subject not found.', 404);
   if (!teacher) throw new AppError('Active teacher not found.', 404);
+  if (await SubjectAssignmentModel.exists({ subjectId, teacherId, status: 'active' }).exec()) {
+    throw new AppError('Teacher is already assigned to this subject.', 409);
+  }
   const assignment = await SubjectAssignmentModel.findOneAndUpdate(
     { subjectId, teacherId },
     {

@@ -165,6 +165,9 @@ documentRoutes.delete('/:id', requireAuth, requireRole('admin', 'teacher'), mong
   try {
       const document = await documentService.getDocumentById(req.params.id as string);
       await assertDocumentAccess(actorFrom(req), document, 'manage');
+      if (document.status === 'processing') {
+        throw new AppError('Processing documents cannot be deleted. Wait until processing finishes.', 409);
+      }
       const deletedChunks = await documentService.deleteDocument(req.params.id as string);
       await recordAuditLog({
         actor: actorFrom(req),

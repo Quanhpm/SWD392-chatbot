@@ -1,17 +1,24 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { ICitation } from '../../types/index.js';
 import { Icon } from '../shared/Icon.js';
 
 interface ChatCitationProps {
   citations: ICitation[];
+  anchorPrefix: string;
 }
 
-export const ChatCitation: React.FC<ChatCitationProps> = ({ citations }) => {
+export const ChatCitation: React.FC<ChatCitationProps> = ({ citations, anchorPrefix }) => {
+  const navigate = useNavigate();
   const [activePreview, setActivePreview] = useState<number | null>(null);
 
   if (!citations || citations.length === 0) return null;
 
-  const handleCitationClick = (idx: number) => {
+  const handleCitationClick = (cite: ICitation, idx: number) => {
+    if (cite.subjectId) {
+      navigate(`/study/${cite.subjectId}`, { state: { documentId: cite.documentId } });
+      return;
+    }
     setActivePreview(activePreview === idx ? null : idx);
   };
 
@@ -24,11 +31,11 @@ export const ChatCitation: React.FC<ChatCitationProps> = ({ citations }) => {
             cite.pageNumbers.length > 0 ? `p. ${cite.pageNumbers.join(', ')}` : 'Slide/Notes';
 
           return (
-            <div key={cite.chunkIndex} className="citation-wrapper" id={`citation-${idx + 1}`}>
+            <div key={`${cite.documentId}-${cite.chunkIndex}-${idx}`} className="citation-wrapper" id={`${anchorPrefix}-${idx + 1}`}>
               <button
                 className="citation-card-btn flex-center"
-                onClick={() => handleCitationClick(idx)}
-                title={`Click to view snippet: ${cite.fileName}`}
+                onClick={() => handleCitationClick(cite, idx)}
+                title={cite.subjectId ? `Mở nguồn: ${cite.fileName}` : `Click to view snippet: ${cite.fileName}`}
               >
                 <div className="badge-num flex-center">{idx + 1}</div>
                 <div className="citation-text-box">

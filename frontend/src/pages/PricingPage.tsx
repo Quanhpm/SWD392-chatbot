@@ -56,6 +56,21 @@ export const PricingPage: React.FC = () => {
     }
   };
 
+  const handleCancel = async () => {
+    if (subscribing !== null || !currentSub || currentSub.status !== 'active') return;
+    if (!window.confirm('Bạn có chắc muốn hủy gói hiện tại không?')) return;
+    try {
+      setSubscribing('cancel');
+      await subscriptionApi.cancelSubscription();
+      setToast({ type: 'success', message: 'Đã hủy gói hiện tại. Quota tháng này vẫn được giữ nguyên.' });
+      await fetchData();
+    } catch (err) {
+      setToast({ type: 'error', message: err instanceof Error ? err.message : 'Hủy gói thất bại. Vui lòng thử lại.' });
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
   const formatPrice = (price: number): string => {
     if (price === 0) return 'Miễn phí';
     return price.toLocaleString('vi-VN') + 'đ/tháng';
@@ -161,9 +176,14 @@ export const PricingPage: React.FC = () => {
 
               <div className="pricing-card-footer">
                 {isCurrent ? (
-                  <div className="pricing-current-badge">
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified</span>
-                    Gói hiện tại
+                  <div className="pricing-current-actions">
+                    <div className="pricing-current-badge">
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>verified</span>
+                      Gói hiện tại
+                    </div>
+                    {plan.name !== 'free' && <button className="pricing-cancel-btn" onClick={() => void handleCancel()} disabled={subscribing !== null}>
+                      {subscribing === 'cancel' ? 'Đang hủy...' : 'Hủy gói'}
+                    </button>}
                   </div>
                 ) : (
                   <button
@@ -486,6 +506,22 @@ const PricingStyle: React.FC = () => (
       background: var(--color-secondary-container);
       color: var(--color-on-secondary-container);
     }
+    .pricing-current-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .pricing-cancel-btn {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--color-outline-variant);
+      border-radius: var(--radius-lg);
+      color: var(--color-error);
+      background: var(--color-surface);
+      font: var(--text-label-sm);
+      font-weight: 700;
+    }
+    .pricing-cancel-btn:disabled { opacity: .6; cursor: not-allowed; }
     /* ── Payment info ── */
     .pricing-payment-info {
       display: flex;

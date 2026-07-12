@@ -249,7 +249,7 @@ Question: ${userMessage}`;
           priorMessages,
           currentPrompt,
         )) || REFUSAL_MESSAGE;
-      const citations = buildCitations(relevantChunks);
+      const citations = buildCitations(relevantChunks, session.subjectId);
       session.messages.push({ role: 'assistant', content, citations, createdAt: new Date() });
       await this.saveAndCacheSession(session);
 

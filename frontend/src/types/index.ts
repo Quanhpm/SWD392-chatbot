@@ -56,6 +56,7 @@ export interface IDocument {
 }
 
 export interface ICitation {
+  subjectId?: string;
   documentId: string;
   fileName: string;
   subject: string;
@@ -119,12 +120,13 @@ export interface IAuditLog {
     | 'subject.archive'
     | 'subject.assignment.add'
     | 'subject.assignment.remove'
+    | 'email.retry'
     | 'document.upload'
     | 'document.metadata.update'
     | 'document.delete'
     | 'subscription.subscribe'
     | 'subscription.cancel';
-  entityType: 'user' | 'subject' | 'subjectAssignment' | 'document' | 'subscription';
+  entityType: 'user' | 'subject' | 'subjectAssignment' | 'document' | 'subscription' | 'emailNotification';
   entityId: string;
   metadata: Record<string, unknown>;
   createdAt: string;
