@@ -3,24 +3,24 @@
 
 :root {
   color-scheme: light;
-  --color-background: #f8fafc;
+  --color-background: #f5f7fb;
   --color-surface: #ffffff;
   --color-surface-bright: #ffffff;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f8fafc;
-  --color-surface-container: #f1f5f9;
-  --color-surface-container-high: #f1f5f9;
-  --color-surface-container-highest: #e2e8f0;
-  --color-surface-variant: #f1f5f9;
-  --color-surface-dim: #cbd5e1;
+  --color-surface-container-low: #f8faff;
+  --color-surface-container: #eef2ff;
+  --color-surface-container-high: #e8edfb;
+  --color-surface-container-highest: #dfe5f2;
+  --color-surface-variant: #eef2f7;
+  --color-surface-dim: #c7d0df;
 
-  --color-primary: #2563eb;
-  --color-primary-container: #1d4ed8;
-  --color-primary-fixed: #eff6ff;
-  --color-primary-fixed-dim: #dbeafe;
+  --color-primary: #4f46e5;
+  --color-primary-container: #3730a3;
+  --color-primary-fixed: #eef2ff;
+  --color-primary-fixed-dim: #c7d2fe;
   --color-on-primary: #ffffff;
   --color-on-primary-container: #ffffff;
-  --color-on-primary-fixed: #1e3a8a;
+  --color-on-primary-fixed: #312e81;
 
   --color-secondary: #0f766e;
   --color-secondary-container: #ecfdf5;
@@ -38,7 +38,7 @@
   --color-inverse-surface: #0f172a;
   --color-inverse-on-surface: #f8fafc;
   --color-outline: #94a3b8;
-  --color-outline-variant: #e2e8f0;
+  --color-outline-variant: #e3e8f2;
   --color-success: #15803d;
   --color-warning: #b45309;
   --color-info: #2563eb;
@@ -63,22 +63,22 @@
   --spacing-lg: 24px;
   --spacing-xl: 32px;
   --spacing-2xl: 48px;
-  --sidebar-width: 240px;
-  --header-height: 56px;
+  --sidebar-width: 256px;
+  --header-height: 64px;
   --chat-max-width: 820px;
   --page-margin: 32px;
 
   --radius-sm: 4px;
   --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 10px;
-  --radius-2xl: 12px;
-  --radius-3xl: 16px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+  --radius-2xl: 16px;
+  --radius-3xl: 20px;
   --radius-full: 9999px;
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.04);
-  --shadow-md: 0 4px 12px rgb(15 23 42 / 0.06);
-  --shadow-lg: 0 12px 24px rgb(15 23 42 / 0.08);
-  --shadow-xl: 0 20px 40px rgb(15 23 42 / 0.12);
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.03), 0 4px 12px rgb(15 23 42 / 0.03);
+  --shadow-md: 0 8px 20px rgb(15 23 42 / 0.06);
+  --shadow-lg: 0 16px 32px rgb(15 23 42 / 0.09);
+  --shadow-xl: 0 24px 56px rgb(15 23 42 / 0.14);
   --transition-fast: 150ms ease;
   --transition-base: 200ms ease;
   --transition-slow: 250ms ease;
@@ -90,7 +90,7 @@ html { scroll-behavior: smooth; }
 body {
   min-height: 100vh;
   overflow-x: hidden;
-  background: var(--color-background);
+  background: radial-gradient(circle at 86% 0%, rgb(224 231 255 / .55), transparent 28rem), var(--color-background);
   color: var(--color-on-surface);
   font: var(--text-body-md);
   font-family: var(--font-family);
@@ -220,13 +220,14 @@ img { display: block; max-width: 100%; }
 .badge-neutral, .badge--default { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
 
 .card {
-  padding: 20px;
+  padding: 22px;
   border: 1px solid var(--color-outline-variant);
   border-radius: var(--radius-2xl);
   background: #fff;
   box-shadow: var(--shadow-sm);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
-.card:hover { border-color: #cbd5e1; }
+.card:hover { border-color: #c7d2fe; box-shadow: var(--shadow-md); }
 .empty-state { display: flex; max-width: 520px; margin: 32px auto; padding: 32px; align-items: center; flex-direction: column; gap: 10px; border: 1px dashed #cbd5e1; border-radius: var(--radius-2xl); background: #fff; text-align: center; }
 .empty-state__icon { display: grid; width: 44px; height: 44px; place-items: center; border-radius: var(--radius-lg); background: #f1f5f9; color: #475569; }
 
@@ -244,4 +245,25 @@ tbody tr:hover { background: #fafcff; }
 @media (max-width: 767px) {
   :root { --page-margin: 18px; }
   .modal-content { padding: 20px; }
+}
+
+.page-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-primary);
+  font: var(--text-label-sm);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.page-title { letter-spacing: -.035em; }
+.muted { color: var(--color-on-surface-variant); }
+.icon-tile {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: var(--radius-xl);
+  background: var(--color-primary-fixed);
+  color: var(--color-primary);
 }

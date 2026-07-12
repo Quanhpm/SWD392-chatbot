@@ -9,6 +9,8 @@
     "start": "node dist/index.js",
     "migrate:subject-only": "tsx src/utils/migrateSubjectOnly.ts",
     "migrate:subject-only:dry": "tsx src/utils/migrateSubjectOnly.ts --dry-run",
+    "db:fix-subject-only": "tsx src/utils/fixSubjectOnlyDatabase.ts --apply",
+    "db:fix-subject-only:dry": "tsx src/utils/fixSubjectOnlyDatabase.ts",
     "email:test": "tsx src/utils/testEmail.ts"
   },
   "dependencies": {

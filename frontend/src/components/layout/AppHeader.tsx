@@ -56,11 +56,11 @@ export const AppHeader: React.FC = () => {
         .app-header {
           height: var(--header-height);
           flex: 0 0 var(--header-height);
-          background: rgba(255,255,255,.94);
+          background: rgba(255,255,255,.84);
           backdrop-filter: blur(10px);
           border-bottom: 1px solid var(--color-outline-variant);
           justify-content: space-between;
-          padding: 0 18px;
+          padding: 0 24px;
           position: sticky;
           top: 0;
           z-index: 50;
@@ -69,14 +69,15 @@ export const AppHeader: React.FC = () => {
         .header-left { gap: 8px; }
         .header-logo-container { gap: 9px; }
         .header-logo {
-          width: 30px;
-          height: 30px;
-          background: var(--color-primary-fixed);
-          border: 1px solid var(--color-primary-fixed-dim);
-          border-radius: var(--radius-lg);
+          width: 34px;
+          height: 34px;
+          background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+          border: 1px solid #c7d2fe;
+          border-radius: var(--radius-xl);
+          box-shadow: 0 4px 10px rgb(79 70 229 / .12);
         }
         .header-title {
-          font-size: 15px;
+          font-size: 16px;
           font-weight: 700;
           letter-spacing: -.01em;
           color: var(--color-on-surface);
@@ -89,7 +90,7 @@ export const AppHeader: React.FC = () => {
           display: none;
           color: var(--color-on-surface-variant);
         }
-        .menu-btn:hover { background: var(--color-surface-container-low); }
+        .menu-btn:hover { background: var(--color-surface-container-high); }
         .header-right { gap: 10px; }
         .header-role-chip {
           display: flex;
@@ -97,8 +98,8 @@ export const AppHeader: React.FC = () => {
           gap: 5px;
           padding: 3px 9px;
           border-radius: var(--radius-full);
-          border: 1px solid var(--color-outline-variant);
-          background: var(--color-surface-container-low);
+          border: 1px solid #e0e7ff;
+          background: #f7f8ff;
           color: var(--color-on-surface-variant);
           font: var(--text-label-sm);
         }
@@ -111,7 +112,7 @@ export const AppHeader: React.FC = () => {
         .user-avatar {
           width: 30px; height: 30px;
           border-radius: var(--radius-full);
-          background: var(--color-on-surface);
+          background: linear-gradient(145deg, #1e1b4b, #4338ca);
           color: white;
           font: var(--text-label-sm);
           font-weight: 700;
