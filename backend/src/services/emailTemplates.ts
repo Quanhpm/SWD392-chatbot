@@ -35,6 +35,15 @@ export const passwordResetEmail = (input: { fullName: string; username: string; 
   return { subject: title, text, html: layout(title, 'Mật khẩu vừa được cập nhật', body, { label: 'Đăng nhập EduSmart', url: input.loginUrl }) };
 };
 
+export const passwordResetCodeEmail = (input: { fullName: string; code: string; expiresInMinutes: number }): EmailContent => {
+  const title = 'Mã xác nhận đặt lại mật khẩu EduSmart';
+  const text = `Xin chào ${input.fullName},\n\nMã xác nhận của bạn là: ${input.code}\nMã có hiệu lực trong ${input.expiresInMinutes} phút.\n\nNếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.`;
+  const body = paragraph(`Xin chào <strong>${escapeHtml(input.fullName)}</strong>, chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.`)
+    + infoBox([['Mã xác nhận', input.code], ['Hiệu lực', `${input.expiresInMinutes} phút`]])
+    + paragraph('Không chia sẻ mã này với bất kỳ ai. Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.');
+  return { subject: title, text, html: layout(title, 'Mã xác nhận đặt lại mật khẩu', body) };
+};
+
 export const teacherSubjectAssignmentEmail = (input: { fullName: string; subjectCode: string; subjectName: string; assigned: boolean; dashboardUrl: string }): EmailContent => {
   const title = input.assigned ? `Bạn được phân công môn ${input.subjectCode}` : `Bạn đã được gỡ khỏi môn ${input.subjectCode}`;
   const status = input.assigned ? 'Đã phân công' : 'Đã gỡ phân công';

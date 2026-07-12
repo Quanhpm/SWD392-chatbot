@@ -58,6 +58,16 @@ export const loginValidators = [
   body('password').notEmpty().withMessage('Password is required.'),
 ];
 
+export const passwordResetRequestValidators = [
+  body('username').trim().notEmpty().withMessage('Username is required.'),
+];
+
+export const passwordResetValidators = [
+  body('username').trim().notEmpty().withMessage('Username is required.'),
+  body('code').trim().matches(/^\d{6}$/).withMessage('Reset code must be 6 digits.'),
+  body('password').isLength({ min: 6, max: 100 }).withMessage('Password must be 6-100 characters.'),
+];
+
 // ─── Subject Validators ───────────────────────────────────────────────────────
 
 export const createSubjectValidators = [

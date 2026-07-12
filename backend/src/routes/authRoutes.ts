@@ -1,8 +1,8 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 
 import { authService } from '../config/dependencies.js';
-import { loginRateLimiter } from '../middleware/rateLimit.js';
-import { loginValidators, validateRequest } from '../middleware/validation.js';
+import { loginRateLimiter, passwordResetRateLimiter } from '../middleware/rateLimit.js';
+import { loginValidators, passwordResetRequestValidators, passwordResetValidators, validateRequest } from '../middleware/validation.js';
 
 export const authRoutes = Router();
 
@@ -32,3 +32,17 @@ authRoutes.post(
     }
   },
 );
+
+authRoutes.post('/forgot-password', passwordResetRateLimiter, passwordResetRequestValidators, validateRequest, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await authService.requestPasswordReset(String(req.body.username));
+    res.json({ success: true, message: 'Nếu tài khoản tồn tại, mã xác nhận đã được gửi đến email đăng ký.' });
+  } catch (error) { next(error); }
+});
+
+authRoutes.post('/reset-password', passwordResetRateLimiter, passwordResetValidators, validateRequest, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await authService.resetPasswordWithCode(String(req.body.username), String(req.body.code), String(req.body.password));
+    res.json({ success: true, message: 'Mật khẩu đã được đặt lại thành công.' });
+  } catch (error) { next(error); }
+});

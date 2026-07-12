@@ -7,6 +7,7 @@ import { logger } from '../utils/logger.js';
 import {
   accountCreatedEmail,
   passwordResetEmail,
+  passwordResetCodeEmail,
   teacherSubjectAssignmentEmail,
   testEmail,
 } from './emailTemplates.js';
@@ -76,6 +77,10 @@ export class EmailService {
       password,
       loginUrl: `${env.frontendUrl}/login`,
     }), 'password-reset');
+  }
+
+  async sendPasswordResetCode(recipient: Recipient, code: string, expiresInMinutes: number): Promise<boolean> {
+    return this.send(recipient, passwordResetCodeEmail({ ...recipient, code, expiresInMinutes }), 'password-reset-code');
   }
 
   async sendTeacherSubjectAssignment(recipient: Recipient, details: {

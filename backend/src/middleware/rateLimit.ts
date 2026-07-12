@@ -63,6 +63,13 @@ export const loginRateLimiter = createRateLimiter({
   keyGenerator: (req) => `login:${clientIp(req)}:${String(req.body?.username ?? '').toLowerCase()}`,
 });
 
+export const passwordResetRateLimiter = createRateLimiter({
+  windowMs: 15 * 60_000,
+  max: 5,
+  message: 'Too many password reset requests. Please try again later.',
+  keyGenerator: (req) => `password-reset:${clientIp(req)}:${String(req.body?.username ?? '').toLowerCase()}`,
+});
+
 export const uploadRateLimiter = createRateLimiter({
   windowMs: 60 * 60_000,
   max: 30,

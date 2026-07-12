@@ -27,5 +27,5 @@ const cacheAdapter: ICachePort = env.redisUrl
 export const documentService = new DocumentService(parserAdapter, embeddingAdapter);
 export const subscriptionService = new SubscriptionService();
 export const chatService = new ChatService(embeddingAdapter, chatAdapter, cacheAdapter, subscriptionService);
-export const authService = new AuthService();
+export const authService = new AuthService(emailService);
 export const adminService = new AdminService(emailService);
