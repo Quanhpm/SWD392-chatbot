@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { useApp } from '../context/AppContext.js';
 import { useChat } from '../context/ChatContext.js';
 import * as chatApi from '../services/chatApi.js';
@@ -6,6 +7,7 @@ import type { IChatSession, IQuotaStatus } from '../types/index.js';
 export const useChatSession = () => {
   const { state: appState, dispatch: appDispatch, refreshSessions } = useApp();
   const { state: chatState, dispatch: chatDispatch } = useChat();
+  const sendInFlightRef = useRef(false);
 
   const setError = (message: string | null) => {
     chatDispatch({ type: 'SET_ERROR', payload: message });
@@ -66,6 +68,8 @@ export const useChatSession = () => {
   };
 
   const postMessage = async (text: string, documentId?: string): Promise<IQuotaStatus | null> => {
+    if (sendInFlightRef.current) return null;
+    sendInFlightRef.current = true;
     let currentSessionId = appState.activeSessionId;
 
     setError(null);
@@ -105,6 +109,7 @@ export const useChatSession = () => {
       return null;
     } finally {
       chatDispatch({ type: 'SET_LOADING', payload: false });
+      sendInFlightRef.current = false;
     }
   };
 

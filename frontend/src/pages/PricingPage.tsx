@@ -43,6 +43,7 @@ export const PricingPage: React.FC = () => {
   }, [toast]);
 
   const handleSubscribe = async (planName: string) => {
+    if (subscribing !== null) return;
     try {
       setSubscribing(planName);
       await subscriptionApi.subscribeToPlan(planName);

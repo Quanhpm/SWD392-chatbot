@@ -8,12 +8,14 @@ interface ChatMessageListProps {
   messages: IChatMessage[];
   isLoading: boolean;
   onSuggestClick: (prompt: string) => void;
+  disabled?: boolean;
 }
 
 export const ChatMessageList: React.FC<ChatMessageListProps> = ({
   messages,
   isLoading,
   onSuggestClick,
+  disabled = false,
 }) => {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -24,8 +26,8 @@ export const ChatMessageList: React.FC<ChatMessageListProps> = ({
 
   if (messages.length === 0) {
     return (
-      <div className="chat-msg-list" style={{ justifyContent: 'center', minHeight: '100%' }}>
-        <ChatWelcome onSuggestClick={onSuggestClick} />
+      <div className="chat-msg-list" style={{ justifyContent: 'center', minHeight: 0 }}>
+        <ChatWelcome onSuggestClick={onSuggestClick} disabled={disabled || isLoading} />
       </div>
     );
   }

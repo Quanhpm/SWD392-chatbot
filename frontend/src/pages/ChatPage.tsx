@@ -101,6 +101,7 @@ const ChatInner: React.FC = () => {
   };
 
   const handleSend = async (text: string) => {
+    if (isLoading) return;
     if (!activeDocumentId) {
       chatDispatch({ type: 'SET_ERROR', payload: 'Vui lòng chọn tài liệu trước khi đặt câu hỏi.' });
       return;
@@ -159,6 +160,7 @@ const ChatInner: React.FC = () => {
           messages={messages}
           isLoading={isLoading}
           onSuggestClick={handleSend}
+          disabled={isLoading}
         />
       </div>
 

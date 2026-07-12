@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext.js';
 import * as docApi from '../services/documentApi.js';
 import type { IDocument } from '../types/index.js';
@@ -7,6 +7,8 @@ export const useDocuments = () => {
   const { state, dispatch, refreshDocuments } = useApp();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const deletingRef = useRef<string | null>(null);
 
   // Poll for processing or uploaded documents
   useEffect(() => {
@@ -41,6 +43,9 @@ export const useDocuments = () => {
   };
 
   const removeDocument = async (id: string) => {
+    if (deletingRef.current) return;
+    deletingRef.current = id;
+    setDeletingId(id);
     setError(null);
     try {
       await docApi.deleteDocument(id);
@@ -48,6 +53,9 @@ export const useDocuments = () => {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete document');
       throw err;
+    } finally {
+      deletingRef.current = null;
+      setDeletingId(null);
     }
   };
 
@@ -84,6 +92,7 @@ export const useDocuments = () => {
     error,
     loadDocuments,
     removeDocument,
+    deletingId,
     uploadFile,
   };
 };

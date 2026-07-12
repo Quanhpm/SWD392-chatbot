@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext.js';
 import { useChatSession } from '../../hooks/useChatSession.js';
@@ -11,22 +11,28 @@ interface SessionItemProps {
 
 export const SessionItem: React.FC<SessionItemProps> = ({ session }) => {
   const navigate = useNavigate();
-  const { activeSessionId, removeSession } = useChatSession();
+  const { activeSessionId, isLoading, removeSession } = useChatSession();
   const { dispatch } = useApp();
+  const [deleting, setDeleting] = useState(false);
 
   const handleSelect = () => {
+    if (isLoading || deleting) return;
     dispatch({ type: 'TOGGLE_SIDEBAR', payload: false }); // Close mobile sidebar if open
     navigate(`/chat/${session._id}`);
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (deleting || isLoading) return;
     if (confirm('Are you sure you want to delete this conversation?')) {
+      setDeleting(true);
       try {
         await removeSession(session._id);
         navigate('/chat');
       } catch (err) {
         console.error('Delete session failed', err);
+      } finally {
+        setDeleting(false);
       }
     }
   };
@@ -44,9 +50,10 @@ export const SessionItem: React.FC<SessionItemProps> = ({ session }) => {
       <button
         className="delete-session-btn flex-center"
         onClick={handleDelete}
+        disabled={deleting || isLoading}
         aria-label="Delete chat history"
       >
-        <Icon name="close" style={{ fontSize: '16px' }} />
+        <Icon name={deleting ? 'hourglass_empty' : 'close'} style={{ fontSize: '16px' }} />
       </button>
 
       <style>{`

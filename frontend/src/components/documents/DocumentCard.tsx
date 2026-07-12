@@ -7,9 +7,10 @@ interface DocumentCardProps {
   document: IDocument;
   onDelete: (id: string) => void;
   canManage?: boolean;
+  deleting?: boolean;
 }
 
-export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, canManage = true }) => {
+export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, canManage = true, deleting = false }) => {
   const getDocIcon = (type: string) => {
     if (type === 'pdf') return 'picture_as_pdf';
     if (type === 'docx') return 'description';
@@ -90,11 +91,12 @@ export const DocumentCard: React.FC<DocumentCardProps> = ({ document, onDelete, 
       {/* Actions */}
       {canManage && (
         <td className="doc-actions-cell">
-          {!canDelete ? (
+          {!canDelete || deleting ? (
             <span className="loading-dots">⏳</span>
           ) : (
             <button
               className="delete-card-btn flex-center"
+              disabled={deleting}
               onClick={() => onDelete(document._id)}
               aria-label="Delete source"
             >

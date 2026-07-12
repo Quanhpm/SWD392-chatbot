@@ -3,9 +3,10 @@ import { Icon } from '../shared/Icon.js';
 
 interface ChatWelcomeProps {
   onSuggestClick: (prompt: string) => void;
+  disabled?: boolean;
 }
 
-export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
+export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick, disabled = false }) => {
   const suggestions = [
     'Bốn giai đoạn của Unified Process là gì?',
     'Giải thích sự khác nhau giữa include và extend trong use case.',
@@ -29,6 +30,7 @@ export const ChatWelcome: React.FC<ChatWelcomeProps> = ({ onSuggestClick }) => {
             key={prompt}
             className="suggestion-chip"
             onClick={() => onSuggestClick(prompt)}
+            disabled={disabled}
             title={prompt}
           >
             {prompt}

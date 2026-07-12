@@ -8,6 +8,7 @@ export const useUpload = (onSuccess?: () => void) => {
   const [status, setStatus] = useState<'idle' | 'uploading' | 'processing' | 'success' | 'failed'>('idle');
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
 
   const validateFile = (selectedFile: File): boolean => {
     setError(null);
@@ -60,11 +61,13 @@ export const useUpload = (onSuccess?: () => void) => {
     chapter: number,
     chapterTitle: string,
   ) => {
+    if (uploadInFlightRef.current) return;
     if (!file) {
       setError('Please select a file to upload.');
       return;
     }
 
+    uploadInFlightRef.current = true;
     setStatus('uploading');
     setProgress(0);
     setError(null);
@@ -84,6 +87,8 @@ export const useUpload = (onSuccess?: () => void) => {
     } catch (err) {
       setStatus('failed');
       setError(err instanceof Error ? err.message : 'Upload failed');
+    } finally {
+      uploadInFlightRef.current = false;
     }
   };
 
